@@ -2,7 +2,7 @@ require_relative "Player"
 require_relative "Vote"
 
 class Room
-	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked
+	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked, :last_article
 
 	def initialize(name, thread, players, leader = nil)
 		@name = name
@@ -16,6 +16,7 @@ class Room
 		@last_leader = leader
 		@changes = false
 		@locked = []
+		@last_article = nil
 		for player in @players
 			@votes_for[player] = []
 			@votes_from[player] = []

@@ -1,3 +1,6 @@
+#!/usr/bin/ruby
+# encoding: utf-8
+
 require 'mechanize'
 
 class Poster
@@ -25,5 +28,29 @@ class Poster
 		form = page.form_with(:name => "MESSAGEFORM")
 		form.body = body
 		page = @agent.submit(form, form.button_with(:value => "Submit"))
+	end
+
+	def get_posts(id, start = nil)
+		start = 0 unless start
+		page = @agent.get("http://boardgamegeek.com/thread/#{id}")
+		posts = []
+		loop do
+			ng = page.parser
+			list = ng.css('div[class="js-rollable article "]')
+			for item in list
+				articleid = item.get_attribute('data-objectid').to_i
+				next if articleid <= start
+				username = item.css('div[class="username"]').text[1...-1]
+				bolds = item.css('dd[class="right"] b').select{|b| b.parent.get_attribute(:class) != "quote"}.collect{|b| b.text}
+				posts.push([username, articleid, bolds])
+			end
+			if page.links_with(:text => "Next »").length > 0
+				page = page.link_with(:text => "Next »").click
+			else
+				break
+			end
+		end
+		posts
+		# list
 	end
 end
