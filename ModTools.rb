@@ -121,8 +121,9 @@ class ModTools
 		end
 	end
 
-	def tally(force = false)
-		for room in @rooms[@roundnum]
+	def tally(force = false, rooms = [])
+		return unless (rl = get_rooms(rooms))
+		for room in rl
 			if force || room.need_tally?
 				@@wi.post(room.thread, room.tally(@@pl, true))
 				puts "Updated vote tally of #{room.name}"
@@ -131,7 +132,6 @@ class ModTools
 			end
 		end
 	end
-
 
 	def vote(p1, p2, locked = false)
 		return unless (pid_room = get_player_room(p1))
@@ -231,9 +231,9 @@ class ModTools
 				@rooms[num] = [] unless @rooms[num]
 				@roundnum = num - 1
 			when "tally"
-				tally
+				tally(false, pieces[1..-1])
 			when "forcetally"
-				tally(true)
+				tally(true, pieces[1..-1])
 			when "showvotes"
 				for room in @rooms[@roundnum]
 					puts room.tally(@@pl)
