@@ -1,0 +1,297 @@
+#!/usr/bin/ruby
+
+require_relative 'PlayerList'
+require_relative 'WebInterface'
+require_relative 'Room'
+require 'yaml'
+
+class ModTools
+	attr_accessor :roundnum, :filename
+
+	def initialize(filename)
+		@roundnum = 0
+		@filename = filename
+		@rooms = [[]]
+	end
+
+	def self.load(filename)
+		YAML::load(File.read(filename))
+	end
+
+	def save
+		File.write(@filename, YAML::dump(self))
+	end
+
+	def all_players
+		return nil unless @rooms[@roundnum]
+		return nil if @rooms[@roundnum] == []
+		return @rooms[@roundnum].collect{|room| room.players}.flatten.uniq
+	end
+
+	def get_player(name, list = all_players, verbose = true,
+				   none_message = nil, many_message = nil)
+		none_message = "%s: No match found\n" unless none_message
+		many_message = "%s: Ambiguous - %s\n" unless many_message
+		opt = @@pl.match(name, list)
+		if opt.length == 0
+			printf(none_message, name) if verbose
+			return nil
+		elsif opt.length > 1
+			printf(many_message, name, opt.collect{|val| @@pl[val].name}.join(", ")) if verbose
+			return nil
+		else
+			return opt[0]
+		end
+	end
+
+	def get_player_room(name, list = all_players, verbose = true,
+						none_message = nil, many_message = nil,
+						room_message = nil)
+		room_message = "%s: No room found\n"
+		return nil unless (pid = get_player(name, list, verbose, none_message, many_message))
+		for r in @rooms[@roundnum]
+			return [pid, r] if r.contain?(pid)
+		end
+		printf(room_message, @@pl[pid].name)
+		return nil
+	end
+
+	def new_room
+		print "Name: "
+		name = gets.chomp
+		print "Thread: "
+		thread = gets.chomp
+		puts "Players:"
+		players = []
+		print "- "
+		while (line = gets)
+			line.chomp!
+			if (opt = get_player(line))
+				players.push(opt)
+				puts "Added #{@@pl[opt[0]].name}"
+			end
+			print "- "
+		end
+		print "\b\b"
+		room = Room.new(name, thread, players)
+		@rooms[@roundnum].push(room)
+		puts "#{room.name} created. (#{room.players.collect{|ind| @@pl[ind].name}.join(", ").sort_by{|name| name.upcase}})"
+	end
+
+	def next_round
+		newround = @roundnum + 1
+		@rooms[newround] = [] unless @rooms[newround]
+		unless @rooms[newround] == []
+			print "Data already exists for round #{newround + 1}. Overwrite? "
+			return unless gets.chomp.upcase == "YES"
+			@rooms[newround] = []
+		end
+
+		data = []
+
+		for oldroom in @rooms[@roundnum]
+			print "#{oldroom.name} round #{newround + 1} thread: "
+			thread = gets.chomp
+			data.push([oldroom, thread, oldroom.players])
+		end
+
+		for fromdata in data
+			for todata in data
+				next if fromdata == todata
+				puts "Transfers from #{fromdata[0].name} to #{todata[0].name} (#{fromdata[0].leader_name(@@pl)}):"
+				print "- "
+				while (line = gets)
+					line.chomp!
+					if (pid = get_player(line, fromdata[0].players))
+						fromdata[2] -= [pid]
+						todata[2] += [pid]
+						puts "Transferred #{@@pl[pid].name}"
+					end
+					print "- "
+				end
+				print "\b\b"
+			end
+		end
+
+		@roundnum = newround
+		for datum in data
+			room = datum[0].next_round(datum[1], datum[2])
+			@rooms[@roundnum].push(room)
+			puts "#{room.name} created. (#{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
+		end
+	end
+
+	def tally(force = false)
+		for room in @rooms[@roundnum]
+			if force || room.need_tally?
+				@@wi.post(room.thread, room.tally(@@pl, true))
+				puts "Updated vote tally of #{room.name}"
+			else
+				puts "Nothing has happened since the last vote tally of #{room.name}"
+			end
+		end
+	end
+
+
+	def vote(p1, p2, locked = false)
+		return unless (pid_room = get_player_room(p1))
+		(voter, room) = pid_room
+		return unless (votee = get_player(p2, room.players))
+		room.vote(voter, votee, locked)
+	end
+
+	def appoint(p1)
+		return unless (pid_room = get_player_room(p1))
+		(pid, room) = pid_room
+
+		puts "#{@@pl[pid]} has been appointed leader of #{room.name}"
+		room.update_leader(pid)
+	end
+
+	def lock(p1)
+		return unless (pid_room = get_player_room(p1))
+		(pid, room) = pid_room
+		room.lock(pid)
+	end
+
+	def unlock(p1)
+		return unless (pid_room = get_player_room(p1))
+		(pid, room) = pid_room
+		room.unlock(pid)
+	end
+
+	def get_rooms(names)
+		return @rooms[@roundnum] if (names.nil? || names.length == 0)
+		input = names.collect{|name| name.upcase}
+		for bad in names.select{|name| !@rooms[@roundnum].collect{|room| room.name.upcase}.include?(name.upcase)}
+			puts "Unrecongnized: #{bad}"
+		end
+		rl = @rooms[@roundnum].select{|room| input.include?(room.name.upcase)}
+		if rl.length <= 0
+			puts "No rooms selected"
+			return nil
+		else
+			return rl
+		end
+	end
+
+	def post(rooms)
+		return unless (rl = get_rooms(rooms))
+		puts "Type a message to post to the following rooms: #{rl.collect{|room| room.name}.join(", ")}."
+
+		text = ""
+		while (line = gets)
+			text << line
+		end
+		text.chomp!
+		if (text == "")
+			puts "You did not enter any text."
+			return
+		end
+		puts "How would you like to post?"
+		case gets.chomp.downcase
+		when "green"
+			text = "[color=#009900]#{text}[/color]"
+		when "orange"
+			text = "[b][color=orange]#{text}[/color][/b]"
+		when "purple"
+			text = "[b][color=purple]#{text}[/color][/b]"
+		when "normal"
+			text = text
+		else
+			return
+		end
+		for room in rl
+			@@wi.post(room.thread, text)
+		end
+	end
+
+	def interact
+		print "> "
+		while (line = gets)
+			line.chomp!
+			pieces = line.split(" ")
+			case pieces[0]
+			when "save"
+				save
+			when "vote"
+				vote(pieces[1], pieces[2])
+			when "lockvote"
+				vote(pieces[1], pieces[2], true)
+			when "lock"
+				lock(pieces[1])
+			when "unlock"
+				unlock(pieces[1])
+			when "newroom"
+				new_room
+			when "nextround"
+				next_round
+			when "round"
+				num = pieces[1].to_i
+				@rooms[num] = [] unless @rooms[num]
+				@roundnum = num - 1
+			when "tally"
+				tally
+			when "forcetally"
+				tally(true)
+			when "showvotes"
+				for room in @rooms[@roundnum]
+					puts room.tally(@@pl)
+				end
+			when "login"
+				@@wi.login(pieces[1], pieces[2])
+			when "appoint"
+				appoint(pieces[1])
+			when "post"
+				post(pieces[1..-1])
+			when "listrooms"
+				for room in @rooms[@roundnum]
+					puts "#{room.name}: #{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")}"
+				end
+			when "status"
+				puts "Round #{@roundnum + 1}"
+				for room in @rooms[@roundnum]
+					puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader == -1 ? "No Leader" : @@pl[room.leader].name}"
+				end
+			else
+				puts "Unrecognized command"
+			end
+			print "> "
+		end
+		save
+		print "\b\b"
+	end
+
+	def update
+		for room in @rooms.flatten
+			next unless room
+			room.locked = [] unless room.locked
+		end
+	end
+end
+
+unless ARGV.length > 0
+	puts "Usage: ModTools.rb <filename>"
+	exit
+else
+	filename = ARGV.shift
+end
+
+THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
+
+@@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
+@@wi = Interface.new
+
+if (File.exist?(filename))
+	m = ModTools.load(filename)
+else
+	m = ModTools.new(filename)
+end
+
+m.update
+
+begin
+	m.interact
+ensure
+	@@wi.stop
+end
