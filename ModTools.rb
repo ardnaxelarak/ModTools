@@ -7,7 +7,7 @@ require_relative 'ScanRoom'
 require 'yaml'
 
 class ModTools
-	attr_accessor :roundnum, :filename
+	attr_accessor :roundnum, :filename, :last_mail
 
 	def initialize(filename)
 		@roundnum = 0
@@ -125,6 +125,13 @@ class ModTools
 		end
 	end
 
+	def transfer(p1, p2)
+		return unless (pid_room = get_player_room(p1))
+		(sender, room) = pid_room
+		return unless (sent = @@pl.get_player(p2, room.players))
+		room.add_transfer(sender, sent)
+	end
+
 	def vote(p1, p2, locked = false)
 		return unless (pid_room = get_player_room(p1))
 		(voter, room) = pid_room
@@ -206,6 +213,8 @@ class ModTools
 			case pieces[0]
 			when "save"
 				save
+			when "transfer"
+				transfer(pieces[1], pieces[2])
 			when "vote"
 				vote(pieces[1], pieces[2])
 			when "lockvote"
@@ -245,7 +254,7 @@ class ModTools
 			when "status"
 				puts "Round #{@roundnum + 1}"
 				for room in @rooms[@roundnum]
-					puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader == -1 ? "No Leader" : @@pl[room.leader].name}"
+					puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader ? "No Leader" : @@pl[room.leader].name} (#{room.get_transfer ? @@pl[room.get_transfer].name : "none"})"
 				end
 			else
 				puts "Unrecognized command"
@@ -260,6 +269,7 @@ class ModTools
 		for room in @rooms.flatten
 			next unless room
 			room.locked = [] unless room.locked
+			room.to_send = {} unless room.to_send
 		end
 	end
 end

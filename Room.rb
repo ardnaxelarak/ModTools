@@ -2,7 +2,7 @@ require_relative "Player"
 require_relative "Vote"
 
 class Room
-	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked, :last_article
+	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked, :last_article, :to_send
 
 	def initialize(name, thread, players, leader = nil)
 		@name = name
@@ -10,6 +10,7 @@ class Room
 		@players = players
 		@votes_for = {}
 		@votes_from = {}
+		@to_send = {}
 		@index = 0
 		@last_tally = 0
 		@leader = leader
@@ -20,6 +21,7 @@ class Room
 		for player in @players
 			@votes_for[player] = []
 			@votes_from[player] = []
+			@to_send[player] = []
 		end
 	end
 
@@ -97,6 +99,17 @@ class Room
 		@index = @index + 1
 		@locked[votee] = locked
 		update_leader(votee) if count(votee) > (players.length / 2)
+	end
+
+	def add_transfer(sender, sent)
+		@to_send[sender] = [] unless @to_send[sender]
+		@to_send[sender].push(sent)
+	end
+
+	def get_transfer
+		return nil unless @leader
+		return nil unless @to_send[@leader]
+		return @to_send[@leader].last
 	end
 
 	def update_leader(newleader)
