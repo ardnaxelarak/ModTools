@@ -18,7 +18,7 @@ def scan_room(wi, pl, room)
 		matches = pl.match(vote[0], room.players)
 		next if matches.length != 1
 		voter = matches[0]
-		matches = vote[1].match(/vote ([a-zA-Z0-9]+)/i)
+		matches = vote[1].match(/vote ([^ ,]+)/i)
 		next unless matches
 		next unless matches.length > 1
 		matches = pl.match(matches[1], room.players)

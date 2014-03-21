@@ -29,27 +29,11 @@ class ModTools
 		return @rooms[@roundnum].collect{|room| room.players}.flatten.uniq
 	end
 
-	def get_player(name, list = all_players, verbose = true,
-				   none_message = nil, many_message = nil)
-		none_message = "%s: No match found\n" unless none_message
-		many_message = "%s: Ambiguous - %s\n" unless many_message
-		opt = @@pl.match(name, list)
-		if opt.length == 0
-			printf(none_message, name) if verbose
-			return nil
-		elsif opt.length > 1
-			printf(many_message, name, opt.collect{|val| @@pl[val].name}.join(", ")) if verbose
-			return nil
-		else
-			return opt[0]
-		end
-	end
-
 	def get_player_room(name, list = all_players, verbose = true,
 						none_message = nil, many_message = nil,
 						room_message = nil)
 		room_message = "%s: No room found\n"
-		return nil unless (pid = get_player(name, list, verbose, none_message, many_message))
+		return nil unless (pid = @@pl.get_player(name, list, verbose, none_message, many_message))
 		for r in @rooms[@roundnum]
 			return [pid, r] if r.contain?(pid)
 		end
@@ -67,7 +51,7 @@ class ModTools
 		print "- "
 		while (line = gets)
 			line.chomp!
-			if (opt = get_player(line))
+			if (opt = @@pl.get_player(line))
 				players.push(opt)
 				puts "Added #{@@pl[opt[0]].name}"
 			end
@@ -103,7 +87,7 @@ class ModTools
 				print "- "
 				while (line = gets)
 					line.chomp!
-					if (pid = get_player(line, fromdata[0].players))
+					if (pid = @@pl.get_player(line, fromdata[0].players))
 						fromdata[2] -= [pid]
 						todata[2] += [pid]
 						puts "Transferred #{@@pl[pid].name}"
@@ -144,7 +128,7 @@ class ModTools
 	def vote(p1, p2, locked = false)
 		return unless (pid_room = get_player_room(p1))
 		(voter, room) = pid_room
-		return unless (votee = get_player(p2, room.players))
+		return unless (votee = @@pl.get_player(p2, room.players))
 		room.vote(voter, votee, locked)
 	end
 

@@ -17,6 +17,22 @@ class PlayerList
 		return @players[index]
 	end
 
+	def get_player(name, list = all_players, verbose = true,
+				   none_message = nil, many_message = nil)
+		none_message = "%s: No match found\n" unless none_message
+		many_message = "%s: Ambiguous - %s\n" unless many_message
+		opt = match(name, list)
+		if opt.length == 0
+			printf(none_message, name) if verbose
+			return nil
+		elsif opt.length > 1
+			printf(many_message, name, opt.collect{|val| @players[val].name}.join(", ")) if verbose
+			return nil
+		else
+			return opt[0]
+		end
+	end
+
 	def match(name, valid = nil)
 		if valid
 			plist = valid.collect{|ind| @players[ind]}
