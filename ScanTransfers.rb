@@ -9,14 +9,15 @@ def scan_transfers(m, wi, pl, verbose = false)
 	transfermail = []
 	for item in list
 		for post in item[:body]
-			transfermail.push([item[:from], post]) if post.downcase.include?("transfer ")
+			transfermail.push([item[:from], post]) if post.downcase.include?("transfer ") || post.downcase.include?("send ")
 		end
 	end
 	for tr in transfermail
 		matches = m.get_player_room(tr[0], m.all_players, verbose)
 		next unless matches
 		(sender, room) = matches
-		matches = vote[1].match(/transfer ([^ ,]+)/i)
+		matches = tr[1].match(/transfer ([^ ,]+)/i)
+		matches = tr[1].match(/send ([^ ,]+)/i) unless matches
 		next unless matches
 		next unless matches.length > 1
 		matches = pl.get_player(matches[1], room.players, verbose)

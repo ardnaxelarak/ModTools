@@ -7,7 +7,7 @@ require_relative 'ScanRoom'
 require 'yaml'
 
 class ModTools
-	attr_accessor :roundnum, :filename, :last_mail
+	attr_accessor :roundnum, :filename, :last_mail, :rooms
 
 	def initialize(filename)
 		@roundnum = 0
@@ -254,7 +254,7 @@ class ModTools
 			when "status"
 				puts "Round #{@roundnum + 1}"
 				for room in @rooms[@roundnum]
-					puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader ? "No Leader" : @@pl[room.leader].name} (#{room.get_transfer ? @@pl[room.get_transfer].name : "none"})"
+					puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader ? @@pl[room.leader].name : "No leader"} (#{room.get_transfer ? @@pl[room.get_transfer].name : "none"})"
 				end
 			else
 				puts "Unrecognized command"
