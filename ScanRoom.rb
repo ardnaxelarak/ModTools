@@ -6,6 +6,7 @@ require_relative "PlayerList"
 
 def scan_room(wi, pl, room)
 	list = wi.get_posts(room.thread, room.last_article)
+	return if list.length <= 0
 	room.last_article = list.last[:id]
 	voteposts = []
 	for item in list

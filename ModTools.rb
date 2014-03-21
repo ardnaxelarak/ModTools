@@ -268,7 +268,7 @@ class ModTools
 			end
 			print "> "
 		end
-		save
+		# save
 		print "\b\b"
 	end
 
