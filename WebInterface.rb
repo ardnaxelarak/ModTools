@@ -50,7 +50,7 @@ class Interface
 			list = ng.css('div').select{|div| div.get_attribute(:class) && div.get_attribute(:class).start_with?("js-rollable article")}
 			for item in list
 				articleid = item.get_attribute('data-objectid').to_i
-				next if articleid <= start
+				next if articleid.to_i <= start.to_i
 				username = item.css('div[class="username"]').text[1...-1]
 				bolds = item.css('dd[class="right"] b').select{|b| b.parent.get_attribute(:class) != "quote"}.collect{|b| b.text}
 				posts.push({:user => username, :id => articleid, :posts => bolds})
