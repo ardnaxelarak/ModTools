@@ -17,7 +17,7 @@ class PlayerList
 		return @players[index]
 	end
 
-	def get_player(name, list = all_players, verbose = true,
+	def get_player(name, list = nil, verbose = true,
 				   none_message = nil, many_message = nil)
 		none_message = "%s: No match found\n" unless none_message
 		many_message = "%s: Ambiguous - %s\n" unless many_message

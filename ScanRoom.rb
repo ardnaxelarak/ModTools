@@ -4,7 +4,7 @@ require_relative "WebInterface"
 require_relative "Room"
 require_relative "PlayerList"
 
-def scan_room(wi, pl, room)
+def scan_room(wi, pl, room, verbose = false)
 	list = wi.get_posts(room.thread, room.last_article)
 	return if list.length <= 0
 	room.last_article = list.last[:id]
@@ -15,13 +15,13 @@ def scan_room(wi, pl, room)
 		end
 	end
 	for vote in voteposts
-		matches = pl.match(vote[0], room.players)
+		matches = pl.match(vote[0], room.players, verbose)
 		next if matches.length != 1
 		voter = matches[0]
 		matches = vote[1].match(/vote ([^ ,]+)/i)
 		next unless matches
 		next unless matches.length > 1
-		matches = pl.match(matches[1], room.players)
+		matches = pl.match(matches[1], room.players, verbose)
 		next if matches.length != 1
 		votee = matches[0]
 

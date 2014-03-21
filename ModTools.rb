@@ -118,10 +118,10 @@ class ModTools
 		end
 	end
 
-	def scan(rooms = [])
+	def scan(verbose = false, rooms = [])
 		return unless (rl = get_rooms(rooms))
 		for room in rl
-			scan_room(@@wi, @@pl, room)
+			scan_room(@@wi, @@pl, room, verbose)
 		end
 	end
 
@@ -223,7 +223,7 @@ class ModTools
 				@rooms[num] = [] unless @rooms[num]
 				@roundnum = num - 1
 			when "scan"
-				scan(pieces[1..-1])
+				scan(true, pieces[1..-1])
 			when "tally"
 				tally(false, pieces[1..-1])
 			when "forcetally"

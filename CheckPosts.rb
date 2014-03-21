@@ -23,7 +23,7 @@ end
 
 begin
 	m.update
-	m.scan
+	m.scan(true)
 	m.tally
 	m.save
 ensure
