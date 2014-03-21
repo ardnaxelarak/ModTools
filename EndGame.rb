@@ -46,16 +46,22 @@ begin
 	end
 
 	if t_england == 8 #rathstar sent
-		message << "\n\nOur illustrious President mowglee decided it would be best to remain in England, and it is good he did for the bomber rathstar travelled abroad to Ruritania whereupon he promptly exploded, no doubt taking a few ModBots with him.\n\nBLUE TEAM WINS!"
+		message << "\n\nOur illustrious President mowglee, having been reminded to take his pills by the on-call Oncologist namyzarc in round 1, decided it would be best to remain in England, and it is good he did for the bomber rathstar (who met with his chemical engineer varoan in round 4) travelled abroad to Ruritania whereupon he promptly exploded, no doubt taking a few ModBots with him.\n\nBLUE TEAM WINS!"
 	elsif t_england == 12 #mowglee sent
-		message << "\n\nOur illustrious President mowglee decided it would be best to travel abroad, and it is good he did for the bomber rathstar remained in England and shortly after mowglee left, rathstar promptly exploded, no doubt taking a few ModBots with him, but mowglee is safe.\n\nBLUE TEAM WINS!"
+		message << "\n\nOur illustrious President mowglee, having been reminded to take his pills by the on-call Oncologist namyzarc in round 1, decided it would be best to travel abroad, and it is good he did for the bomber rathstar (whose chemical engineer varoan repaired his bomb in round 4) remained in England. Shortly after mowglee left, rathstar promptly exploded, no doubt taking a few ModBots with him, but mowglee is safe.\n\nBLUE TEAM WINS!"
 	else
-		message << "\n\nOur illustrious President mowglee decided it would be best to remain in England, but unfortunately for him the bomber rathstar exploded, and mowglee was no more.\n\nRED TEAM WINS!"
+		message << "\n\nOur illustrious President mowglee, having been reminded to take his pills by the on-call Oncologist namyzarc in round 1, decided it would be best to remain in England, but unfortunately for him the bomber rathstar (whose chemical engineer varoan made sure to repair) exploded, and mowglee was no more. Sources report a few ModBots likely died in the explosion as well.\n\nRED TEAM WINS!"
 	end
 
 	message << "[/color][/b]"
 
 	message << "\n\nThanks to everyone for playing, and for bearing with me as I tried to fight wih my ModBot and get it to work.\nI'm sorry that the game turned out to be very boring; I think Mach was correct that the reason was because there were no roles that punished card shares. It was my first time modding, and I'll know better for next time.\n\nThanks again to everyone for playing! I'll have a few more comments to make, probably tomorrow, once I get a chance to post."
+
+	message << "\n\nI feel I made a few bad rules clarifications. I'm not sure I like forcing the painters to paint when they card share; it was what I had in mind when I started the game, but apparently Borgoto and Machiavellian did not. I'm sorry again for that late clarification that I think messed up both of you.\nBoth scholars knew their own team's vacuum and the opposing team's wallflower. I found it interesting that Shawna began by claiming both she and square were blue--I don't really know whether anyone believed that or anything, but I think there are some interesting strategies with the scholar. I wish now that I had included a role that had a penalty for card sharing instead of the scholar, but such is life."
+
+	message << "\n\nA few special notes for now: namyzarc's \"on-call Oncologist\" song was amazing, and I think he likely had the most public reveals as well.\nrathstar tried to break modbot's vote-scanning in many varied ways, and as such will be featured in a section entitled \"Don't Be Like Rathstar\" indicating how to properly use the modbot. He also managed to vacuum his bomb. longlivesquare has some explosive indigestion."
+
+	message << "\n\nFinally, as much as I hate to say it, thanks to modkiwi for counting all those votes and all his snarky comments. My favorite part was when Borgoto offered to paint him like me so that he could kill me and take my place. I am, of course, glad that did not actually happen. Then again, no one would know if I really were ModBot replacing Kiwi..."
 
 	puts message
 	@@wi.post(1138843, message)
