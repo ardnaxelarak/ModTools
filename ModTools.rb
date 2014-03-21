@@ -280,28 +280,31 @@ class ModTools
 	end
 end
 
-unless ARGV.length > 0
-	puts "Usage: ModTools.rb <filename>"
-	exit
-else
-	filename = ARGV.shift
-end
 
-THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
+if (__FILE__ == $0)
+	unless ARGV.length > 0
+		puts "Usage: ModTools.rb <filename>"
+		exit
+	else
+		filename = ARGV.shift
+	end
 
-@@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
-@@wi = Interface.new
+	THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
 
-if (File.exist?(filename))
-	m = ModTools.load(filename)
-else
-	m = ModTools.new(filename)
-end
+	@@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
+	@@wi = Interface.new
 
-m.update
+	if (File.exist?(filename))
+		m = ModTools.load(filename)
+	else
+		m = ModTools.new(filename)
+	end
 
-begin
-	m.interact
-ensure
-	@@wi.stop
+	m.update
+
+	begin
+		m.interact
+	ensure
+		@@wi.stop
+	end
 end
