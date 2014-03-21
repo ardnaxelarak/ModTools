@@ -1,3 +1,6 @@
+#!/usr/bin/ruby
+# encoding: utf-8
+
 require 'mechanize'
 
 class Interface
@@ -44,13 +47,13 @@ class Interface
 		posts = []
 		loop do
 			ng = page.parser
-			list = ng.css('div[class="js-rollable article "]')
+			list = ng.css('div').select{|div| div.get_attribute(:class) && div.get_attribute(:class).start_with?("js-rollable article")}
 			for item in list
 				articleid = item.get_attribute('data-objectid').to_i
 				next if articleid <= start
 				username = item.css('div[class="username"]').text[1...-1]
 				bolds = item.css('dd[class="right"] b').select{|b| b.parent.get_attribute(:class) != "quote"}.collect{|b| b.text}
-				posts.push([username, articleid, bolds])
+				posts.push({:user => username, :id => articleid, :posts => bolds})
 			end
 			if page.links_with(:text => "Next »").length > 0
 				page = page.link_with(:text => "Next »").click

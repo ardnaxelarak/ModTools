@@ -3,6 +3,7 @@
 require_relative 'PlayerList'
 require_relative 'WebInterface'
 require_relative 'Room'
+require_relative 'ScanRoom'
 require 'yaml'
 
 class ModTools
@@ -133,6 +134,13 @@ class ModTools
 		end
 	end
 
+	def scan(rooms = [])
+		return unless (rl = get_rooms(rooms))
+		for room in rl
+			scan_room(@@wi, @@pl, room)
+		end
+	end
+
 	def vote(p1, p2, locked = false)
 		return unless (pid_room = get_player_room(p1))
 		(voter, room) = pid_room
@@ -230,6 +238,8 @@ class ModTools
 				num = pieces[1].to_i
 				@rooms[num] = [] unless @rooms[num]
 				@roundnum = num - 1
+			when "scan"
+				scan(pieces[1..-1])
 			when "tally"
 				tally(false, pieces[1..-1])
 			when "forcetally"

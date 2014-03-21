@@ -130,5 +130,4 @@ class Room
 		text = old_prefix + text + old_suffix unless current_vote?(vote) 
 		return text
 	end
-
 end
