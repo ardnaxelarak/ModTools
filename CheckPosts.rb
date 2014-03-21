@@ -28,4 +28,5 @@ begin
 	m.save
 ensure
 	@@wi.stop
+	puts "---------------------------"
 end

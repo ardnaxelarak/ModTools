@@ -11,7 +11,7 @@ class ModTools
 
 	def initialize(filename)
 		@roundnum = 0
-		@filename = filename
+		@filename = File.expand_path(filename)
 		@rooms = [[]]
 	end
 
