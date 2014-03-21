@@ -4,6 +4,7 @@
 require 'mechanize'
 
 class Interface
+	attr_accessor :agent
 	def initialize
 		@agent = Mechanize.new
 		login
@@ -35,10 +36,50 @@ class Interface
 		end
 	end
 
+	def send_geekmail(user, subject, content)
+		@agent.post("http://boardgamegeek.com/geekmail_controller.php", {"B1" => "Send", "action" => "save", "body" => content, "savecopy" => "1", "subject" => subject, "touser" => user})
+	end
+
 	def login(username = 'modkiwi', password = 'modkiwi157')
 		show_message("Logging into BGG...") do
 			@agent.post("http://boardgamegeek.com/login", {"username" => username, "password" => password})
 		end
+	end
+
+	def get_geekmail(id)
+		page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"action" => "getmessage", "messageid" => id.to_s})
+		item = page.parser.css('div[class="gm_subject"]')[0].parent
+		bolds = item.css('b').select{|b| b.parent.get_attribute(:class) != "quote" && b.parent.get_attribute(:class) != "gm_subject"}.collect{|b| b.text}
+	end
+
+	def geekmail_list
+		pagenum = 1
+		messages = []
+		page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"action" => "viewfolder", "folder" => "inbox", "pageID" => pagenum.to_s})
+		items = page.parser.css('table[class="gm_messages"]')
+		while (items.length > 0)
+			for item in items
+				read = (item.css('input[name="msgread[]"]')[0].get_attribute(:value) == "1")
+				messageid = item.css('input[name="messagelist[]"]')[0].get_attribute(:value).to_i
+				from = item.css('td[class="gm_prefix"] a')[0].text
+				list = item.css('div').select{|div| div.get_attribute(:class) && div.get_attribute(:class).start_with?("js-rollable article")}
+				subject = item.css('td[style="gm_messageline"] a[style]')[0].text
+				messages.push({:read => read, :id => messageid, :from => from, :subject => subject})
+			end
+
+			pagenum += 1
+			page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"action" => "viewfolder", "folder" => "inbox", "pageID" => pagenum.to_s})
+			items = page.parser.css('table[class="gm_messages"]')
+		end
+		return messages.uniq
+	end
+
+	def mail_since(mid = nil)
+		list = geekmail_list
+		# list.select!{|item| !item[:read]}
+		list.select!{|item| item[:id].to_i > mid.to_i}
+		list.reverse!
+		return list.collect{|item| item.merge(:body => get_geekmail(item[:id]))}
 	end
 
 	def get_posts(id, start = nil)
