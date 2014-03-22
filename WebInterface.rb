@@ -5,9 +5,9 @@ require 'mechanize'
 
 class Interface
 	attr_accessor :agent
-	def initialize
+	def initialize(filename)
 		@agent = Mechanize.new
-		login
+		login_from_file(filename)
 	end
 
 	def show_message(message)
@@ -40,10 +40,17 @@ class Interface
 		@agent.post("http://boardgamegeek.com/geekmail_controller.php", {"B1" => "Send", "action" => "save", "body" => content, "savecopy" => "1", "subject" => subject, "touser" => user})
 	end
 
-	def login(username = 'modkiwi', password = 'modkiwi157')
+	def login(username, password)
 		show_message("Logging into BGG...") do
 			@agent.post("http://boardgamegeek.com/login", {"username" => username, "password" => password})
 		end
+	end
+
+	def login_from_file(filename)
+		f = File.open(filename)
+		username = f.lines.next
+		password = f.lines.next
+		login(username, password)
 	end
 
 	def get_geekmail(id)

@@ -13,7 +13,7 @@ end
 THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
 
 @@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
-@@wi = Interface.new
+@@wi = Interface.new(File.expant_path("../default_auth", THIS_FILE))
 
 if (File.exist?(filename))
 	m = ModTools.load(filename)
