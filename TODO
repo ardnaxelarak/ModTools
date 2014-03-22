@@ -2,7 +2,7 @@ create interface for modifying player database
 create interface for interacting with active games
 switch owner to modbot user instead of kiwi
 scan rss feed
-automatic end-of-round postings, as well as links to new thread
+automatic end-of-round postings with links to new thread
 read transfer orders for more than one person
 store roles of players
 automate geekmails of player roles

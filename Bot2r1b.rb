@@ -282,7 +282,7 @@ end
 
 if (__FILE__ == $0)
 	unless ARGV.length > 0
-		puts "Usage: ModTools.rb <filename>"
+		puts "Usage: modbot2r1b <filename>"
 		exit
 	else
 		filename = ARGV.shift
