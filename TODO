@@ -1,4 +1,5 @@
-put login credentials in separate file
+check to see if login fails
+check for error message on sending geekmail
 rename to 2R1BBot
 create interface for modifying player database
 switch files to modbot user instead of kiwi
@@ -6,3 +7,5 @@ scan rss feed
 create file of current games to be scanned
 automatic end-of-round postings, as well as links to new thread
 read transfer orders for more than one person
+store roles of players
+automate geekmails of player roles

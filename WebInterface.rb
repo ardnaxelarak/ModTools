@@ -5,9 +5,9 @@ require 'mechanize'
 
 class Interface
 	attr_accessor :agent
-	def initialize(filename)
+	def initialize(filename = nil)
 		@agent = Mechanize.new
-		login_from_file(filename)
+		login_from_file(filename) if filename
 	end
 
 	def show_message(message)
@@ -100,7 +100,7 @@ class Interface
 				articleid = item.get_attribute('data-objectid').to_i
 				next if articleid.to_i <= start.to_i
 				username = item.css('div[class="username"]').text[1...-1]
-				bolds = item.css('dd[class="right"] b').select{|b| b.parent.get_attribute(:class) != "quote"}.collect{|b| b.text}
+				bolds = item.css('dd[class="right"] b').select{|b| b.parent.get_attribute(:class) != "quote"}.collect{|b| b.to_html}
 				posts.push({:user => username, :id => articleid, :posts => bolds})
 			end
 			if page.links_with(:text => "Next »").length > 0
