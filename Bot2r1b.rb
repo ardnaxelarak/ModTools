@@ -243,7 +243,11 @@ class Bot2r1b
 					puts room.tally(@@pl)
 				end
 			when "login"
-				@@wi.login(pieces[1], pieces[2])
+				if @@wi.login(pieces[1], pieces[2])
+					puts "Login successful"
+				else
+					puts "Login failed"
+				end
 			when "appoint"
 				appoint(pieces[1])
 			when "post"
@@ -288,6 +292,8 @@ if (__FILE__ == $0)
 
 	@@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
 	@@wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
+
+	puts "Warning: you are not logged in" unless @@wi.logged_in
 
 	if (File.exist?(filename))
 		b = Bot2r1b.load(filename)

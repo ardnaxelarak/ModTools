@@ -4,9 +4,10 @@
 require 'mechanize'
 
 class Interface
-	attr_accessor :agent
+	attr_accessor :agent, :logged_in
 	def initialize(filename = nil)
 		@agent = Mechanize.new
+		@logged_in = false
 		login_from_file(filename) if filename
 	end
 
@@ -21,7 +22,7 @@ class Interface
 		page = @agent.get("http://boardgamegeek.com/thread/#{thread}")
 		page = @agent.click("Reply")
 		form = page.form_with(:name => "MESSAGEFORM")
-		return page unless form
+		return false unless form
 		form.body = content
 		show_message("Submitting post...") do
 			page = @agent.submit(form, form.button_with(:value => 'Submit'))
@@ -34,17 +35,31 @@ class Interface
 			show_message("Retrying...") do
 				page = @agent.submit(form, form.button_with(:value => 'Submit'))
 			end
+			times += 1
 		end
 	end
 
 	def send_geekmail(user, subject, content)
-		@agent.post("http://boardgamegeek.com/geekmail_controller.php", {"B1" => "Send", "action" => "save", "body" => content, "savecopy" => "1", "subject" => subject, "touser" => user})
+		page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"B1" => "Send", "action" => "save", "body" => content, "savecopy" => "1", "subject" => subject, "touser" => user})
+		times = 0
+		while page.body.include?("You have sent too many messages in too short a time--please wait before sending your next message.") && times < 3
+			show_message("Too many messages in too short a time -- waiting one minute...") do
+				sleep 60
+			end
+			show_message("Retrying...") do
+				page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"B1" => "Send", "action" => "save", "body" => content, "savecopy" => "1", "subject" => subject, "touser" => user})
+			end
+			times += 1
+		end
+		puts "gave up" if times >= 3
 	end
 
 	def login(username, password)
 		show_message("Logging into BGG...") do
-			@agent.post("http://boardgamegeek.com/login", {"username" => username, "password" => password})
+			page = @agent.post("http://boardgamegeek.com/login", {"username" => username, "password" => password})
+			@logged_in = !page.body.include?("Invalid Username/Password")
 		end
+		return @logged_in
 	end
 
 	def login_from_file(filename)
