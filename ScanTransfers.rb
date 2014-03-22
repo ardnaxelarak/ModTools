@@ -1,7 +1,5 @@
 #!/usr/bin/ruby
 
-require_relative "ModTools"
-
 def scan_transfers(m, wi, pl, verbose = false)
 	list = wi.mail_since(m.last_mail)
 	return if list.length <= 0

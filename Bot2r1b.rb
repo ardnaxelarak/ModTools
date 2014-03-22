@@ -6,7 +6,7 @@ require_relative 'Room'
 require_relative 'ScanRoom'
 require 'yaml'
 
-class ModTools
+class Bot2r1b
 	attr_accessor :roundnum, :filename, :last_mail, :rooms
 
 	def initialize(filename)
@@ -290,15 +290,15 @@ if (__FILE__ == $0)
 	@@wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
 
 	if (File.exist?(filename))
-		m = ModTools.load(filename)
+		b = Bot2r1b.load(filename)
 	else
-		m = ModTools.new(filename)
+		b = Bot2r1b.new(filename)
 	end
 
-	m.update
+	b.update
 
 	begin
-		m.interact
+		b.interact
 	ensure
 		@@wi.stop
 	end

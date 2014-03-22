@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-require_relative 'ModTools'
+require_relative 'Bot2r1b'
 require 'yaml'
 
 THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
@@ -26,15 +26,15 @@ begin
 	for filename in list
 		puts "Opening #{filename}"
 		if (File.exist?(filename))
-			m = ModTools.load(filename)
+			b = Bot2r1b.load(filename)
 		else
 			next
 		end
 
-		m.update
-		m.scan(true)
-		m.tally
-		m.save
+		b.update
+		b.scan(true)
+		b.tally
+		b.save
 	end
 ensure
 	@@wi.stop

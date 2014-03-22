@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-require_relative 'ModTools'
+require_relative 'Bot2r1b'
 require_relative 'ScanTransfers'
 require 'yaml'
 
@@ -17,15 +17,15 @@ THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
 @@wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
 
 if (File.exist?(filename))
-	m = ModTools.load(filename)
+	b = Bot2r1b.load(filename)
 else
 	exit
 end
 
 begin
-	m.update
-	scan_transfers(m, @@wi, @@pl, true)
-	m.save
+	b.update
+	scan_transfers(b, @@wi, @@pl, true)
+	b.save
 ensure
 	@@wi.stop
 	puts "---------------------------"
