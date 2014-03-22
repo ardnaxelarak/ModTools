@@ -282,7 +282,7 @@ end
 
 if (__FILE__ == $0)
 	unless ARGV.length > 0
-		puts "Usage: modbot2r1b <filename>"
+		puts "Usage: #{File.basename(__FILE__)} <filename>"
 		exit
 	else
 		filename = ARGV.shift

@@ -3,7 +3,7 @@
 require_relative 'Bot2r1b'
 
 unless ARGV.length > 0
-	puts "Usage: modbotendround <filename>"
+	puts "Usage: #{File.basename(__FILE__)} <filename>"
 	exit
 else
 	filename = ARGV.shift
