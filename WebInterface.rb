@@ -7,7 +7,6 @@ class Interface
 	attr_accessor :agent
 	def initialize(filename = nil)
 		@agent = Mechanize.new
-		puts filename
 		login_from_file(filename) if filename
 	end
 
@@ -52,8 +51,6 @@ class Interface
 		f = File.open(filename)
 		username = f.lines.next.chomp
 		password = f.lines.next.chomp
-		puts username
-		puts password
 		login(username, password)
 	end
 

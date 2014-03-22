@@ -12,8 +12,8 @@ unless File.exist?(actname)
 	puts END_LINE
 	exit
 end
-activefile = File.open(actname, "r")
-if activefile.lines.count == 0
+list = File.read(actname).split("\n").uniq
+if list.length == 0
 	puts "no active games"
 	puts END_LINE
 	exit
@@ -23,7 +23,7 @@ end
 @@wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
 
 begin
-	for filename in activefile.lines
+	for filename in list
 		puts "Opening #{filename}"
 		if (File.exist?(filename))
 			m = ModTools.load(filename)

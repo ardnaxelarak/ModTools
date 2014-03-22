@@ -58,6 +58,7 @@ class ModTools
 			print "- "
 		end
 		print "\b\b"
+		players.uniq!
 		room = Room.new(name, thread, players)
 		@rooms[@roundnum].push(room)
 		puts "#{room.name} created. (#{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
