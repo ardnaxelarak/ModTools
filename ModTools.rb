@@ -53,14 +53,14 @@ class ModTools
 			line.chomp!
 			if (opt = @@pl.get_player(line))
 				players.push(opt)
-				puts "Added #{@@pl[opt[0]].name}"
+				puts "Added #{@@pl[opt].name}"
 			end
 			print "- "
 		end
 		print "\b\b"
 		room = Room.new(name, thread, players)
 		@rooms[@roundnum].push(room)
-		puts "#{room.name} created. (#{room.players.collect{|ind| @@pl[ind].name}.join(", ").sort_by{|name| name.upcase}})"
+		puts "#{room.name} created. (#{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
 	end
 
 	def next_round

@@ -7,6 +7,7 @@ class Interface
 	attr_accessor :agent
 	def initialize(filename = nil)
 		@agent = Mechanize.new
+		puts filename
 		login_from_file(filename) if filename
 	end
 
@@ -21,6 +22,7 @@ class Interface
 		page = @agent.get("http://boardgamegeek.com/thread/#{thread}")
 		page = @agent.click("Reply")
 		form = page.form_with(:name => "MESSAGEFORM")
+		return page unless form
 		form.body = content
 		show_message("Submitting post...") do
 			page = @agent.submit(form, form.button_with(:value => 'Submit'))
@@ -48,8 +50,10 @@ class Interface
 
 	def login_from_file(filename)
 		f = File.open(filename)
-		username = f.lines.next
-		password = f.lines.next
+		username = f.lines.next.chomp
+		password = f.lines.next.chomp
+		puts username
+		puts password
 		login(username, password)
 	end
 
