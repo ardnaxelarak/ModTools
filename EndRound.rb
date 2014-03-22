@@ -20,16 +20,18 @@ unless @@wi.logged_in
 end
 
 if (File.exist?(filename))
-	b = Bot2r1b.load(filename)
+	b = YAML::load(File.read(filename))
 else
 	puts "#{filename} does not exist"
 	exit
 end
 
 begin
-	b.update
-	for room in b.rooms[b.roundnum]
-		@@wi.post(room.thread, "[b][color=purple]Round is over. Please stop posting.[/color][/b]")
+	if (b.class == Bot2r1b)
+		b.update
+		for room in b.rooms[b.roundnum]
+			@@wi.post(room.thread, "[b][color=purple]Round is over. Please stop posting.[/color][/b]")
+		end
 	end
 ensure
 	@@wi.stop

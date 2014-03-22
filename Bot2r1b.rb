@@ -15,10 +15,6 @@ class Bot2r1b
 		@rooms = [[]]
 	end
 
-	def self.load(filename)
-		YAML::load(File.read(filename))
-	end
-
 	def save
 		File.write(@filename, YAML::dump(self))
 	end
@@ -290,16 +286,20 @@ if (__FILE__ == $0)
 
 	THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
 
+	if (File.exist?(filename))
+		b = YAML::load(File.read(filename))
+		if (b.class != Bot2r1b)
+			puts "#{filename} does not contain a 2R1B bot"
+			exit
+		end
+	else
+		b = Bot2r1b.new(filename)
+	end
+
 	@@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
 	@@wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
 
 	puts "Warning: you are not logged in" unless @@wi.logged_in
-
-	if (File.exist?(filename))
-		b = Bot2r1b.load(filename)
-	else
-		b = Bot2r1b.new(filename)
-	end
 
 	b.update
 

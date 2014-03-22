@@ -26,15 +26,17 @@ begin
 	for filename in list
 		puts "Opening #{filename}"
 		if (File.exist?(filename))
-			b = Bot2r1b.load(filename)
+			b = YAML::load(File.read(filename))
 		else
 			next
 		end
 
-		b.update
-		b.scan(true)
-		b.tally
-		b.save
+		if (b.class == Bot2r1b)
+			b.update
+			b.scan(true)
+			b.tally
+			b.save
+		end
 	end
 ensure
 	@@wi.stop
