@@ -7,7 +7,7 @@ require_relative "PlayerList"
 def scan_votes(list)
 	return if list.length <= 0
 	voteposts = []
-	pattern = /(lock ?)?vote (\w+)/
+	pattern = /(lock ?)?vote (\w+)/i
 	for item in list
 		for post in item[:posts]
 			for vote in post.scan(pattern)
