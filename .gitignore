@@ -1,2 +1,5 @@
 default_auth
 active_games
+documentation/*.aux
+documentation/*.toc
+documentation/*.log

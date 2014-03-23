@@ -1,0 +1,75 @@
+\documentclass{report}
+
+\usepackage{textcomp}
+\usepackage[T1]{fontenc}
+
+\begin{document}
+\title{ModBot User Guide}
+\author{Zachary J Felix\\(Kiwi13cubed)}
+\maketitle
+
+\tableofcontents
+
+\chapter*{About the ModBot}
+\addcontentsline{toc}{chapter}{About the ModBot}
+ModBot is a tool for assisting in moderating PBF games on boardgamegeek.com. At present its scope is limited to the game Two Rooms and a Boom, but support for The Resistance as well as perhaps other games is planned. The ModBot interacts with players using the \textbf{modkiwi} account, which at the time of the creation of this document still has a ``BGG NEWUSER'' badge, which limits the number of posts or geekmails that can be made in a short time. As such, the ModBot is somewhat limited in what it can do right now, but some of these complications should go away once the ``newuser'' status goes away.
+
+Currently, the ModBot can keep track of the players in each room in a Two Rooms and a Boom game, and will scan every five minutes in each thread to check for votes and post a tally of the votes and current leader. There is presently somewhat experimental support for users to send transfer orders via geekmail to the ModBot, but at the time of writing this document this only supports orders to send a single player. This feature is the next goal for implementation.
+
+\section*{ModBot Server}
+The ModBot is hosted on one of Amazon's free mirco EC2 servers at 54.186.173.2. If you would like access to the ModBot, please contact Kiwi13cubed on boardgamegeek. A web interface is tenatively planned for the somewhat distant future.
+
+\chapter{2r1bbot -- The ``Two Rooms and a Boom'' Bot}
+The main functionality of ModBot at present is in the 2r1bbot program. To launch the ``Two Rooms and a Boom'' bot, use the command ``\texttt{2r1bbot }\textit{filename}''. If \textit{filename} already exists, it will load the data stored in that file; otherwise, it will create a new one. The 2r1bbot program features a shell-like interface, and the main commands are summarized below. To exit from the 2r1bbot program, signal end-of-input (typically sent via Ctrl-D).
+
+\begin{itemize}
+\item ``\texttt{save}'' simply writes the current state of the data to the file it was loaded from.
+\item ``\texttt{newroom}'' will set up a room in the current round. You will be prompted for the name of the room, the thread id on BGG, and the list of players. Send an end-of-input signal to terminate the list of players. This should generally only be used to set up the first round.
+\item ``\texttt{nextround}'' will set up the next round. You will be prompted for the thread ids of each room for the next round, as well as the transfers from each room. Terminate list of players being transferred with end-of-input.
+\item ``\texttt{post} [\textit{rooms}]'' will post to each room listed in \textit{rooms}, or all rooms if \textit{rooms} is omitted. You will then be prompted for the message to post; signal end-of-input to terminate the message. Finally, you will be prompted for how to post the message:
+\begin{itemize}
+\item Enter ``normal'' to post the message without any formatting
+\item Enter ``green'' to post the message with a green-ish color
+\item Enter ``purple'' to post the message in a bold purple
+\item Enter ``orange'' to post the message in a bold orange
+\item Enter anything else to cancel the message
+\end{itemize}
+\item ``\texttt{listrooms}'' will list the players who are currently in each room.
+\item ``\texttt{status}'' lists the current round number, as well as the name, leader, and current transfer orders for each room.
+\item ``\texttt{appoint} \textit{player}'' will set \textit{player} to be the leader of their current room.
+\end{itemize}
+The following commands should not generally need to be used, or have become obsolete:
+\begin{itemize}
+\item ``\texttt{transfer} \textit{player names}'' sets the transfer orders for \textit{player} to be to send the players listed in \textit{names} (delimeted by spaces). Currently this only handles one name, and is mostly useless since the ModBot can check geekmail for transfer orders anyway.
+\item ``\texttt{vote} \textit{player name}'' will set \textit{player}'s vote to be for \textit{name}
+\item ``\texttt{lockvote} \textit{player name}'' will set \textit{player}'s vote to be a locked vote for \textit{name}
+\item ``\texttt{lock} \textit{player}'' will set \textit{player}'s current vote to be locked
+\item ``\texttt{unlock} \textit{player} will set \textit{player}'s vote to be unlocked.
+\item ``\texttt{round} \textit{roundnum}'' sets the current round to \textit{roundnum}. Each round is stored separately, and only the rooms of the current round will be scanned for votes.
+\item ``\texttt{scan}'' forces a scan of the current room for votes.
+\item ``\texttt{tally} [\textit{rooms}]'' posts a vote tally to each room that has changed since the latest vote tally from the list \textit{rooms}. If \textit{rooms} is omitted, all updated rooms will have a tally posted.
+\item ``\texttt{forcetally} [\textit{rooms}]'' behaves the same as \textit{tally} except that the vote tally will be posted even if no changes have been made in that room.
+\end{itemize}
+
+\chapter{endround -- Ending a Round}
+The ``\texttt{endround} \textit{filename}'' command will post to all rooms in the active round to stop posting. To schedule this in advance, use the \texttt{at} command. For example, if your file's name is ``62b'' and you want to end a round at 4 PM, you could enter ``\texttt{at 4PM}'', and when prompted for the command, enter ``\texttt{endround 62b}'' (followed by end-of-input). Alternatively, you could enter the single command \texttt{echo \textquotedbl endround 62b\textquotedbl | at 4 PM}.
+Note that the ModBot's server is set to BGG time (CST).
+
+\appendix
+\chapter{Setting Up a Game}
+\section{Two Rooms and a Boom}
+The following instructions assume a filename of ``name''. Adjust accordingly, choosing a name for a file that does not yet exist.
+\begin{enumerate}
+\item Run \texttt{2r1bbot name}.
+\item Type the \texttt{newroom} command for each room, entering the name, thread id, and players in each room. Terminate the list of players with end-of-input (typically ctrl-D on unix-like systems and ctrl-Z on Windows).
+\item Notify Kiwi13cubed of your filename so he can add it to the list of active games (ideally there will be a command to manage this eventually, but not yet).
+\item Signal end-of-input to leave the 2r1bbot program.
+\end{enumerate}
+At the \emph{end} of each round:
+\begin{enumerate}
+\item If desired, schedule the ModBot to post end-of-round messages with ``\texttt{echo \textquotedbl endround name\textquotedbl\ | at 8 PM}'' (replacing ``8 PM'' with your desired end time and ``name'' with the filename).
+\item Create the new threads for the next round.
+\item When the round ends, run \texttt{2r1bbot name} and enter the \texttt{nextround} command. Enter the thread IDs and player transfers as indicated.
+\end{enumerate}
+
+\end{document}
