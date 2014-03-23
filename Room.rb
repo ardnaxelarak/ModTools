@@ -78,6 +78,11 @@ class Room
 		return text
 	end
 
+	def choose_leader
+		plist = players.sort_by {|p| count(p) * 1000 - last(p)}.reverse
+		@leader = plist.first
+	end
+
 	def count(votee)
 		count = 0
 		for vote in @votes_for[votee]

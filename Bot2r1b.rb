@@ -75,6 +75,10 @@ class Bot2r1b
 			print "#{oldroom.name} round #{newround + 1} thread: "
 			thread = gets.chomp
 			data.push([oldroom, thread, oldroom.players])
+			unless oldroom.leader
+				leader = oldroom.choose_leader
+				puts "#{@@pl[leader].name} has become leader of #{oldroom.name}!"
+			end
 		end
 
 		for fromdata in data
