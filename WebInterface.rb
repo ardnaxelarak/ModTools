@@ -37,6 +37,7 @@ class Interface
 			end
 			times += 1
 		end
+		return times < 3
 	end
 
 	def send_geekmail(user, subject, content)

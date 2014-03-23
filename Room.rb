@@ -54,11 +54,6 @@ class Room
 	end
 
 	def tally(pl, update = false)
-		if update
-			@last_tally = @index
-			@last_leader = @leader
-			@changes = false
-		end
 		text = ""
 		text << "[b][color=purple]#{pl[@leader].name} has become leader![/color][/b]\n\n" if @last_leader != @leader
 		text << "[color=#009900]Current Leader: #{leader_name(pl)}"
@@ -75,6 +70,12 @@ class Room
 		text << "\n\n'*' indicates a locked vote."
 
 		text << "[/color]"
+		if update
+			@last_tally = @index
+			@last_leader = @leader
+			@changes = false
+		end
+		return text
 	end
 
 	def count(votee)

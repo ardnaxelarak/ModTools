@@ -107,8 +107,11 @@ class Bot2r1b
 		return unless (rl = get_rooms(rooms))
 		for room in rl
 			if force || room.need_tally?
-				@@wi.post(room.thread, room.tally(@@pl, true))
-				puts "Updated vote tally of #{room.name}"
+				if @@wi.post(room.thread, room.tally(@@pl, true))
+					puts "Updated vote tally of #{room.name}"
+				else
+					puts "Update of #{room.name} failed!"
+				end
 			else
 				puts "Nothing has happened since the last vote tally of #{room.name}"
 			end
@@ -122,10 +125,14 @@ class Bot2r1b
 		end
 	end
 
-	def transfer(p1, p2)
+	def transfer(p1, list)
 		return unless (pid_room = get_player_room(p1))
 		(sender, room) = pid_room
-		return unless (sent = @@pl.get_player(p2, room.players))
+		sent = []
+		for name in list
+			return unless cur = @@pl.get_player(name, room.players)
+			sent.push(cur)
+		end
 		room.add_transfer(sender, sent)
 	end
 
@@ -211,7 +218,7 @@ class Bot2r1b
 			when "save"
 				save
 			when "transfer"
-				transfer(pieces[1], pieces[2])
+				transfer(pieces[1], pieces[2..-1])
 			when "vote"
 				vote(pieces[1], pieces[2])
 			when "lockvote"
@@ -255,14 +262,14 @@ class Bot2r1b
 			when "status"
 				puts "Round #{@roundnum + 1}"
 				for room in @rooms[@roundnum]
-					puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader ? @@pl[room.leader].name : "No leader"} (#{room.get_transfer ? @@pl[room.get_transfer].name : "none"})"
+					puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader ? @@pl[room.leader].name : "No leader"} (#{room.get_transfer ? room.get_transfer.collect{|pid| @@pl[pid].name}.join(", ") : "none"})"
 				end
 			else
 				puts "Unrecognized command"
 			end
 			print "> "
 		end
-		# save
+		save
 		print "\b\b"
 	end
 
