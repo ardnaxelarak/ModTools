@@ -6,4 +6,6 @@ automatic end-of-round postings with links to new thread
 read transfer orders for more than one person
 store roles of players
 automate geekmails of player roles
-create documentation
+update documentation
+figure better way of running cron job than as root
+thumb posts with votes
