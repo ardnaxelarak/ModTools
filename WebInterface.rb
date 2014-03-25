@@ -63,6 +63,10 @@ class Interface
 		return @logged_in
 	end
 
+	def thumb(itemid)
+		@agent.post("http://boardgamegeek.com/geekrecommend.php", {"action" => "recommend", "itemid" => itemid.to_s, "itemtype" => "article", "value" => "1"})
+	end
+
 	def login_from_file(filename)
 		f = File.open(filename)
 		username = f.lines.next.chomp
