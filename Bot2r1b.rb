@@ -122,10 +122,10 @@ class Bot2r1b
 		end
 	end
 
-	def scan(verbose = false, rooms = [])
+	def scan(verbose = false, only_new = true, rooms = [])
 		return unless (rl = get_rooms(rooms))
 		for room in rl
-			scan_room(@@wi, @@pl, room, verbose)
+			scan_room(@@wi, @@pl, room, only_new, verbose)
 		end
 	end
 
@@ -240,7 +240,9 @@ class Bot2r1b
 				@rooms[num] = [] unless @rooms[num]
 				@roundnum = num - 1
 			when "scan"
-				scan(true, pieces[1..-1])
+				scan(true, true, pieces[1..-1])
+			when "rescan"
+				scan(true, false, pieces[1..-1])
 			when "tally"
 				tally(false, pieces[1..-1])
 			when "forcetally"

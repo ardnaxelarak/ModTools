@@ -103,7 +103,7 @@ class Room
 		@votes_from[voter].push(v)
 		@votes_for[votee].push(v)
 		@index = @index + 1
-		@locked[votee] = locked
+		@locked[voter] = locked
 		update_leader(votee) if count(votee) > (players.length / 2)
 	end
 
@@ -139,7 +139,7 @@ class Room
 
 	def locked_vote?(vote)
 		return false unless current_vote?(vote)
-		return @locked[vote.votee]
+		return @locked[vote.voter]
 	end
 
 	def vote_desc(pl, vote, old_prefix = "[-]", old_suffix = "[/-]", locked_ind = "*")

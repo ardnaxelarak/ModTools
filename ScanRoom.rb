@@ -18,8 +18,12 @@ def scan_votes(list)
 	voteposts
 end
 
-def scan_room(wi, pl, room, verbose = false)
-	list = wi.get_posts(room.thread, room.last_article)
+def scan_room(wi, pl, room, only_new = true, verbose = false)
+	if only_new
+		list = wi.get_posts(room.thread, room.last_article)
+	else
+		list = wi.get_posts(room.thread)
+	end
 	return if list.length <= 0
 	room.last_article = list.last[:id]
 	voteposts = scan_votes(list)
