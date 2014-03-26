@@ -9,3 +9,9 @@ automate geekmails of player roles
 update documentation
 figure better way of running cron job than as root
 thumb posts with votes
+get id of new posts/threads and track
+make main program not interactive to avoid file editting conflicts
+set up new rounds automatically based on transfer orders
+store end of round times
+remove file location from files
+finish/fix rescan function (doesn't clear votes)

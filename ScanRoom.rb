@@ -23,6 +23,7 @@ def scan_room(wi, pl, room, only_new = true, verbose = false)
 		list = wi.get_posts(room.thread, room.last_article)
 	else
 		list = wi.get_posts(room.thread)
+		room.clear_votes
 	end
 	return if list.length <= 0
 	room.last_article = list.last[:id]

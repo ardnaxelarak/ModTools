@@ -25,6 +25,13 @@ class Room
 		end
 	end
 
+	def clear_votes
+		for player in @players
+			@votes_for[player] = []
+			@votes_from[player] = []
+		end
+	end
+
 	def next_round(thread, players = @players)
 		return Room.new(@name, thread, players, leader)
 	end
