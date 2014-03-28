@@ -155,6 +155,12 @@ class Bot2r1b
 		room.update_leader(pid)
 	end
 
+	def remove(p1)
+		return unless (pid_room = get_player_room(p1))
+		(pid, room) = pid_room
+		room.remove_player(pid)
+	end
+
 	def lock(p1)
 		return unless (pid_room = get_player_room(p1))
 		(pid, room) = pid_room
@@ -229,41 +235,9 @@ class Bot2r1b
 		for room in @rooms.flatten
 			next unless room
 			room.locked = [] unless room.locked
+			room.added = [] unless room.added
+			room.removed = [] unless room.removed
 			room.to_send = {} unless room.to_send
 		end
-	end
-end
-
-if (__FILE__ == $0)
-	unless ARGV.length > 0
-		puts "Usage: #{File.basename(__FILE__)} <filename>"
-		exit
-	else
-		filename = ARGV.shift
-	end
-
-	THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
-
-	if (File.exist?(filename))
-		b = YAML::load(File.read(filename))
-		if (b.class != Bot2r1b)
-			puts "#{filename} does not contain a 2R1B bot"
-			exit
-		end
-	else
-		b = Bot2r1b.new(filename)
-	end
-
-	@@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
-	@@wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
-
-	puts "Warning: you are not logged in" unless @@wi.logged_in
-
-	b.update
-
-	begin
-		b.interact
-	ensure
-		@@wi.stop
 	end
 end

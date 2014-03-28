@@ -6,15 +6,17 @@ require_relative "Bot2r1b"
 opts = Trollop::options do
 	banner "Usage:
 	#{__FILE__} [options]\n\nwhere common options are:"
-	opt :file, "File to use", :required => :true, :type => :string
-	opt :create, "Create a new game"
+	opt :file, "File to use", :required => :true, :type => :string, :short => "f"
+	opt :create, "Create a new game", :short => "c"
 	opt :next_round, "Initialize next round"
-	opt :quiet, "Quiet mode"
-	opt :post, "Make a post"
+	opt :quiet, "Quiet mode", :short => "q"
+	opt :post, "Make a post", :short => "p"
 	opt :rooms, "Set rooms", :type => :strings
 	opt :status, "Display current game status"
 	opt :show_votes, "Display current votes"
-	opt :appoint, "Appoint a player leader of their room", :type => :string
+	opt :appoint, "Appoint a player leader of their room", :type => :string, :short => "a"
+	opt :remove, "Remove a player from the game", :type => :strings, :multi => true
+	opt :list_rooms, "List the players occupying each room"
 	opt :help, "Show this message", :short => "h"
 	banner "\nand options that have mostly become unnecessary are:"
 	opt :scan, "Scan the rooms", :short => "s"
@@ -44,7 +46,7 @@ if (File.exist?(opts[:file]))
 	Trollop::die("file does not contain a 2R1B bot") unless b.class == Bot2r1b
 else
 	Trollop::die("file does not exist") unless (opts[:create_given])
-	b = Bot2r1b.new(filename)
+	b = Bot2r1b.new(opts[:file])
 end
 
 begin
@@ -71,14 +73,21 @@ Trollop::die "rooms not recognized" unless rl = b.get_rooms(opts[:rooms])
 
 b.transfer(opts[:transfer][0], opts[:transfer][1..-1]) if opts[:transfer_given]
 
-b.vote(opts[:vote][0], opts[:vote][1], false) if opts[:vote_given]
-b.vote(opts[:lock_vote][0], opts[:lock_vote][1], true) if opts[:lock_vote_given]
+for vote in opts[:vote]
+	b.vote(vote[0], vote[1], false)
+end
+for vote in opts[:lock_vote]
+	b.vote(vote[0], vote[1], true)
+end
 
 for name in opts[:lock].flatten
 	b.lock(name)
 end
 for name in opts[:unlock].flatten
 	b.unlock(name)
+end
+for name in opts[:remove].flatten
+	b.remove(name)
 end
 
 b.change_round(opts[:round]) if opts[:round_given]
@@ -106,3 +115,5 @@ if opts[:list_rooms]
 end
 
 b.print_status if opts[:status]
+
+b.save

@@ -2,7 +2,7 @@ require_relative "Player"
 require_relative "Vote"
 
 class Room
-	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked, :last_article, :to_send
+	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked, :last_article, :to_send, :added, :removed
 
 	def initialize(name, thread, players, leader = nil)
 		@name = name
@@ -16,6 +16,8 @@ class Room
 		@leader = leader
 		@last_leader = leader
 		@changes = false
+		@added = []
+		@removed = []
 		@locked = []
 		@last_article = nil
 		for player in @players
@@ -41,10 +43,15 @@ class Room
 		@players.push(pid)
 		@votes_for[pid] = []
 		@votes_from[i] = []
+		@added.push(pid)
+		@changes = true
 	end
 
 	def remove_player(pid)
 		@players -= [pid]
+		@removed.push(pid)
+		@changes = true
+		recalc
 	end
 
 	def contain?(player)
@@ -62,7 +69,14 @@ class Room
 
 	def tally(pl, update = false)
 		text = ""
-		text << "[b][color=purple]#{pl[@leader].name} has become leader![/color][/b]\n\n" if @last_leader != @leader
+		for pid in @added
+			text << "[b][color=purple]#{pl[pid].name} has joined the room!\n"
+		end
+		for pid in @removed
+			text << "[b][color=purple]#{pl[pid].name} has been removed!\n"
+		end
+		text << "[b][color=purple]#{pl[@leader].name} has become leader![/color][/b]\n" if @last_leader != @leader
+		text << "\n" unless text == ""
 		text << "[color=#009900]Current Leader: #{leader_name(pl)}"
 		text << "\n\nVOTE TALLY:"
 		
@@ -81,6 +95,8 @@ class Room
 			@last_tally = @index
 			@last_leader = @leader
 			@changes = false
+			@added = []
+			@removed = []
 		end
 		return text
 	end
@@ -111,7 +127,13 @@ class Room
 		@votes_for[votee].push(v)
 		@index = @index + 1
 		@locked[voter] = locked
-		update_leader(votee) if count(votee) > (players.length / 2)
+		recalc
+	end
+
+	def recalc
+		for votee in @players
+			update_leader(votee) if count(votee) > (players.length / 2)
+		end
 	end
 
 	def add_transfer(sender, sent)
@@ -141,7 +163,7 @@ class Room
 	end
 
 	def current_vote?(vote)
-		return vote == @votes_from[vote.voter].last
+		return (vote == @votes_from[vote.voter].last) && @players.include?(vote.voter)
 	end
 
 	def locked_vote?(vote)
