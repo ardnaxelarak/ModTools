@@ -213,70 +213,16 @@ class Bot2r1b
 		end
 	end
 
-	def interact
-		print "> "
-		while (line = gets)
-			line.chomp!
-			pieces = line.split(" ")
-			case pieces[0]
-			when "save"
-				save
-			when "transfer"
-				transfer(pieces[1], pieces[2..-1])
-			when "vote"
-				vote(pieces[1], pieces[2])
-			when "lockvote"
-				vote(pieces[1], pieces[2], true)
-			when "lock"
-				lock(pieces[1])
-			when "unlock"
-				unlock(pieces[1])
-			when "newroom"
-				new_room
-			when "nextround"
-				next_round
-			when "round"
-				num = pieces[1].to_i
-				@rooms[num] = [] unless @rooms[num]
-				@roundnum = num - 1
-			when "scan"
-				scan(true, true, pieces[1..-1])
-			when "rescan"
-				scan(true, false, pieces[1..-1])
-			when "tally"
-				tally(false, pieces[1..-1])
-			when "forcetally"
-				tally(true, pieces[1..-1])
-			when "showvotes"
-				for room in @rooms[@roundnum]
-					puts room.tally(@@pl)
-				end
-			when "login"
-				if @@wi.login(pieces[1], pieces[2])
-					puts "Login successful"
-				else
-					puts "Login failed"
-				end
-			when "appoint"
-				appoint(pieces[1])
-			when "post"
-				post(pieces[1..-1])
-			when "listrooms"
-				for room in @rooms[@roundnum]
-					puts "#{room.name}: #{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")}"
-				end
-			when "status"
-				puts "Round #{@roundnum + 1}"
-				for room in @rooms[@roundnum]
-					puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader ? @@pl[room.leader].name : "No leader"} (#{room.get_transfer ? room.get_transfer.collect{|pid| @@pl[pid].name}.join(", ") : "none"})"
-				end
-			else
-				puts "Unrecognized command"
-			end
-			print "> "
+	def change_round(num)
+		@rooms[num] = [] unless @rooms[num]
+		@roundnum = num - 1
+	end
+
+	def print_status
+		puts "Round #{@roundnum + 1}"
+		for room in @rooms[@roundnum]
+			puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader ? @@pl[room.leader].name : "No leader"} (#{room.get_transfer ? room.get_transfer.collect{|pid| @@pl[pid].name}.join(", ") : "none"})"
 		end
-		save
-		print "\b\b"
 	end
 
 	def update
@@ -287,7 +233,6 @@ class Bot2r1b
 		end
 	end
 end
-
 
 if (__FILE__ == $0)
 	unless ARGV.length > 0

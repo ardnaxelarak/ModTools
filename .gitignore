@@ -1,5 +1,6 @@
 default_auth
 active_games
+*.swp
 documentation/*.aux
 documentation/*.toc
 documentation/*.log

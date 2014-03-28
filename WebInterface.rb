@@ -4,21 +4,31 @@
 require 'mechanize'
 
 class Interface
-	attr_accessor :agent, :logged_in
+	attr_accessor :agent, :logged_in, :verbose
 	def initialize(filename = nil)
+		@verbose = true
 		@agent = Mechanize.new
 		@logged_in = false
-		login_from_file(filename) if filename
+		@filename = filename
+	end
+
+	def check
+		login_from_file(@filename) unless @logged_in || !@filename
 	end
 
 	def show_message(message)
-		len = message.length
-		print message
-		yield
-		print "\b" * len + " " * len + "\b" * len
+		if @verbose
+			len = message.length
+			print message
+			yield
+			print "\b" * len + " " * len + "\b" * len
+		else
+			yield
+		end
 	end
 
 	def post(thread, content)
+		check
 		page = @agent.get("http://boardgamegeek.com/thread/#{thread}")
 		page = @agent.click("Reply")
 		form = page.form_with(:name => "MESSAGEFORM")
@@ -41,6 +51,7 @@ class Interface
 	end
 
 	def send_geekmail(user, subject, content)
+		check
 		page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"B1" => "Send", "action" => "save", "body" => content, "savecopy" => "1", "subject" => subject, "touser" => user})
 		times = 0
 		while page.body.include?("You have sent too many messages in too short a time--please wait before sending your next message.") && times < 3
@@ -64,6 +75,7 @@ class Interface
 	end
 
 	def thumb(itemid)
+		check
 		@agent.post("http://boardgamegeek.com/geekrecommend.php", {"action" => "recommend", "itemid" => itemid.to_s, "itemtype" => "article", "value" => "1"})
 	end
 
@@ -75,12 +87,14 @@ class Interface
 	end
 
 	def get_geekmail(id)
+		check
 		page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"action" => "getmessage", "messageid" => id.to_s})
 		item = page.parser.css('div[class="gm_subject"]')[0].parent
 		bolds = item.css('b').select{|b| b.parent.get_attribute(:class) != "quote" && b.parent.get_attribute(:class) != "gm_subject"}.collect{|b| b.text}
 	end
 
 	def geekmail_list
+		check
 		pagenum = 1
 		messages = []
 		page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"action" => "viewfolder", "folder" => "inbox", "pageID" => pagenum.to_s})
@@ -103,6 +117,7 @@ class Interface
 	end
 
 	def mail_since(mid = nil)
+		check
 		list = geekmail_list
 		# list.select!{|item| !item[:read]}
 		list.select!{|item| item[:id].to_i > mid.to_i}
@@ -111,6 +126,7 @@ class Interface
 	end
 
 	def get_posts(id, start = nil)
+		check
 		start = 0 unless start
 		page = @agent.get("http://boardgamegeek.com/thread/#{id}")
 		posts = []
