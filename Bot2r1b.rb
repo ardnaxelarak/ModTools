@@ -107,8 +107,8 @@ class Bot2r1b
 		end
 	end
 
-	def tally(force = false, rooms = [])
-		return unless (rl = get_rooms(rooms))
+	def tally(force = false, rl = nil)
+		rl = @rooms[@roundnum] unless rl
 		for room in rl
 			if force || room.need_tally?
 				if @@wi.post(room.thread, room.tally(@@pl, true))
@@ -122,8 +122,8 @@ class Bot2r1b
 		end
 	end
 
-	def scan(verbose = false, only_new = true, rooms = [])
-		return unless (rl = get_rooms(rooms))
+	def scan(verbose = false, only_new = true, rl = nil)
+		rl = @rooms[@roundnum] unless rl
 		for room in rl
 			scan_room(@@wi, @@pl, room, only_new, verbose)
 		end
@@ -182,8 +182,8 @@ class Bot2r1b
 		end
 	end
 
-	def post(rooms)
-		return unless (rl = get_rooms(rooms))
+	def post(rl = nil)
+		rl = @rooms[@roundnum] unless rl
 		puts "Type a message to post to the following rooms: #{rl.collect{|room| room.name}.join(", ")}."
 
 		text = ""
