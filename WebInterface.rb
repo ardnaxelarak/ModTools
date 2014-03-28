@@ -47,7 +47,9 @@ class Interface
 			end
 			times += 1
 		end
-		return times < 3
+		match = page.uri.to_s.match(/article\/(\d+)#\1/)
+		return nil unless match
+		return match[1]
 	end
 
 	def send_geekmail(user, subject, content)
