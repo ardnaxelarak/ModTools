@@ -60,9 +60,10 @@ end
 b.update
 
 if opts[:create]
-	2.times do
-		b.new_room
-	end
+	puts "Setting up first room..."
+	b.new_room
+	puts "Setting up second room..."
+	b.new_room
 end
 
 b.next_round if opts[:next_round]

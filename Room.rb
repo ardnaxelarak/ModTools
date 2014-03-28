@@ -70,10 +70,10 @@ class Room
 	def tally(pl, update = false)
 		text = ""
 		for pid in @added
-			text << "[b][color=purple]#{pl[pid].name} has joined the room!\n"
+			text << "[b][color=purple]#{pl[pid].name} has joined the room![/color][/b]\n"
 		end
 		for pid in @removed
-			text << "[b][color=purple]#{pl[pid].name} has been removed!\n"
+			text << "[b][color=purple]#{pl[pid].name} has been removed![/color][/b]\n"
 		end
 		text << "[b][color=purple]#{pl[@leader].name} has become leader![/color][/b]\n" if @last_leader != @leader
 		text << "\n" unless text == ""
