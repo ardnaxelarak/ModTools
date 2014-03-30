@@ -127,6 +127,14 @@ class Interface
 		return list.collect{|item| item.merge(:body => get_geekmail(item[:id]))}
 	end
 
+	def in_quote(post)
+		while (post.respond_to?(:parent) && post.parent)
+			post = post.parent
+			return true if post.get_attribute(:class) == "quote"
+		end
+		return false
+	end
+
 	def get_posts(id, start = nil)
 		check
 		start = 0 unless start
@@ -139,7 +147,7 @@ class Interface
 				articleid = item.get_attribute('data-objectid').to_i
 				next if articleid.to_i <= start.to_i
 				username = item.css('div[class="username"]').text[1...-1]
-				bolds = item.css('dd[class="right"] b').select{|b| b.parent.get_attribute(:class) != "quote"}.collect{|b| b.to_html}
+				bolds = item.css('dd[class="right"] b').select{|b| !in_quote(b)}.collect{|b| b.to_html}
 				posts.push({:user => username, :id => articleid, :posts => bolds})
 			end
 			if page.links_with(:text => "Next »").length > 0

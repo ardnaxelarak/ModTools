@@ -3,6 +3,8 @@
 require_relative 'Bot2r1b'
 require 'yaml'
 
+puts Time.now.strftime("%d/%m/%Y %H:%M")
+
 THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
 END_LINE = "--------------------"
 
@@ -21,6 +23,7 @@ end
 
 @@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
 @@wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
+@@wi.verbose = false
 
 begin
 	for filename in list
@@ -34,7 +37,7 @@ begin
 		if (b.class == Bot2r1b)
 			b.update
 			b.scan(true)
-			b.tally
+			b.tally(false, nil, false)
 			b.save
 		end
 	end

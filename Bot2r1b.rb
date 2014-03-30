@@ -107,17 +107,17 @@ class Bot2r1b
 		end
 	end
 
-	def tally(force = false, rl = nil)
+	def tally(force = false, rl = nil, verbose = true)
 		rl = @rooms[@roundnum] unless rl
 		for room in rl
 			if force || room.need_tally?
 				if @@wi.post(room.thread, room.tally(@@pl, true))
-					puts "Updated vote tally of #{room.name}"
+					puts "Updated vote tally of #{room.name}" if verbose
 				else
 					puts "Update of #{room.name} failed!"
 				end
 			else
-				puts "Nothing has happened since the last vote tally of #{room.name}"
+				puts "Nothing has happened since the last vote tally of #{room.name}" if verbose
 			end
 		end
 	end
