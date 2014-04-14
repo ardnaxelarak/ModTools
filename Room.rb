@@ -32,6 +32,7 @@ class Room
 			@votes_for[player] = []
 			@votes_from[player] = []
 		end
+		@index = 0
 	end
 
 	def next_round(thread, players = @players)
