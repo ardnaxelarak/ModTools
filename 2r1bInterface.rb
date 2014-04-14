@@ -16,10 +16,12 @@ opts = Trollop::options do
 	opt :show_votes, "Display current votes"
 	opt :appoint, "Appoint a player leader of their room", :type => :string, :short => "a"
 	opt :remove, "Remove a player from the game", :type => :strings, :multi => true
+	opt :add, "Add a player to a room", :type => :strings, :multi => true
 	opt :list_rooms, "List the players occupying each room"
 	opt :help, "Show this message", :short => "h"
 	banner "\nand options that have mostly become unnecessary are:"
 	opt :scan, "Scan the rooms", :short => "s"
+	opt :new_room, "Create a new room"
 	opt :rescan, "Reset vote counts and rescan", :short => "S"
 	opt :tally, "Post vote tallies", :short => "t"
 	opt :force_tally, "Force a posting of a vote tally", :short => "T"
@@ -66,11 +68,15 @@ if opts[:create]
 	b.new_room
 end
 
+b.new_room if opts[:new_room]
+
 b.next_round if opts[:next_round]
 
 Trollop::die "invalid round number" if opts[:round_given] && !b.rooms[opts[:round]]
 
 Trollop::die "rooms not recognized" unless rl = b.get_rooms(opts[:rooms])
+Trollop::die(:add, "must select a room") if opts[:add_given] && rl.length = 0
+Trollop::die("Players can only be added to one room") if opts[:add_given] && rl.length > 1
 
 b.transfer(opts[:transfer][0], opts[:transfer][1..-1]) if opts[:transfer_given]
 
@@ -89,6 +95,9 @@ for name in opts[:unlock].flatten
 end
 for name in opts[:remove].flatten
 	b.remove(name)
+end
+for name in opts[:add].flatten
+	b.add_player(name, rl[0])
 end
 
 b.change_round(opts[:round]) if opts[:round_given]

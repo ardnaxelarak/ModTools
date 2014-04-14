@@ -42,7 +42,7 @@ class Room
 		return if @players.include?(pid)
 		@players.push(pid)
 		@votes_for[pid] = []
-		@votes_from[i] = []
+		@votes_from[pid] = []
 		@added.push(pid)
 		@changes = true
 	end

@@ -161,6 +161,12 @@ class Bot2r1b
 		room.remove_player(pid)
 	end
 
+	def add_player(p1, r1)
+		return unless (pid = @@pl.get_player(p1))
+		return if @rooms[@roundnum].collect{|r| r.players}.flatten.include?(pid)
+		r1.add_player(pid)
+	end
+
 	def lock(p1)
 		return unless (pid_room = get_player_room(p1))
 		(pid, room) = pid_room
