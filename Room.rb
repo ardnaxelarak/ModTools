@@ -2,7 +2,7 @@ require_relative "Player"
 require_relative "Vote"
 
 class Room
-	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked, :last_article, :to_send, :added, :removed
+	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked, :last_article, :to_send, :added, :removed, :offered_to, :accepted
 
 	def initialize(name, thread, players, leader = nil)
 		@name = name
@@ -11,6 +11,8 @@ class Room
 		@votes_for = {}
 		@votes_from = {}
 		@to_send = {}
+		@offered_to = {}
+		@accepted = {}
 		@index = 0
 		@last_tally = 0
 		@leader = leader
@@ -25,6 +27,26 @@ class Room
 			@votes_from[player] = []
 			@to_send[player] = []
 		end
+	end
+
+	def offer_player(pid1, pid2)
+		@offered_to[pid1] = pid2 unless @accepted[pid1]
+	end
+
+	def accept_offer(pid2, pid1)
+		return nil unless @offered_to[pid1] == pid2
+		@offered_to[pid1] = nil
+		if @leader == pid1
+			update_leader(pid2)
+		else
+			@accepted[pid1] = pid2
+		end
+		return true
+	end
+
+	def revoke_offer(pid1)
+		@offered_to[pid1] = nil
+		@accepted[pid1] = nil
 	end
 
 	def clear_votes
@@ -104,7 +126,7 @@ class Room
 
 	def choose_leader
 		plist = players.sort_by {|p| count(p) * 1000 - last(p)}.reverse
-		@leader = plist.first
+		update_leader(plist.first)
 	end
 
 	def count(votee)
@@ -150,6 +172,7 @@ class Room
 
 	def update_leader(newleader)
 		@leader = newleader
+		@leader = @accepted[newleader] if @accepted[newleader]
 		@changes = true
 	end
 

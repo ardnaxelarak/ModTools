@@ -4,18 +4,18 @@ require_relative "WebInterface"
 require_relative "Room"
 require_relative "PlayerList"
 
-def scan_votes(list)
+def scan_actions(list)
 	return if list.length <= 0
-	voteposts = []
-	pattern = /(lock ?)?vote (\w+)/i
+	actions = []
+	pattern = /(lock ?)?(vote|leaderoffer|leaderaccept|revokeoffer)(?: (\w+))?/i
 	for item in list
 		for post in item[:posts]
-			for vote in post.scan(pattern)
-				voteposts.push([item[:user], vote[1], vote[0]])
+			for action in post.scan(pattern)
+				actions.push([item[:user], action[1], action[2], action[0]])
 			end
 		end
 	end
-	voteposts
+	actions
 end
 
 def scan_room(wi, pl, room, only_new = true, verbose = false)
@@ -27,12 +27,27 @@ def scan_room(wi, pl, room, only_new = true, verbose = false)
 	end
 	return if list.length <= 0
 	room.last_article = list.last[:id]
-	voteposts = scan_votes(list)
-	for vote in voteposts
-		next unless voter = pl.get_player(vote[0], room.players, verbose)
-		next unless votee = pl.get_player(vote[1], room.players, verbose)
+	actions = scan_actions(list)
+	for action in actions
+		next unless actor = pl.get_player(action[0], room.players, verbose)
+		next unless actee = pl.get_player(action[1], room.players, verbose)
 
-		puts "#{pl[voter].name} #{vote[2] ? "lock" : ""}votes for #{pl[votee].name}" if verbose
-		room.vote(voter, votee, vote[2])
+		case action[2]
+			when "vote"
+				puts "#{pl[actor].name} #{action[3] ? "lock" : ""}votes for #{pl[actee].name}" if verbose
+				room.vote(actor, actee, action[3])
+			when "leaderoffer"
+				puts "#{pl[actor].name} offers leadership to #{pl[actee].name}" if verbose
+				room.offer_player(actor, actee)
+			when "revokeoffer"
+				puts "#{pl[actor].name} revokes all offers of leadership" if verbose
+				room.revoke_offer(actor)
+			when "leaderaccept"
+				if room.accept_offer(actor, actee)
+					puts "#{pl[actor].name} accepts leadership from #{pl[actee].name}" if verbose
+				else
+					puts "#{pl[actor].name} tries to accept leadership from #{pl[actee].name}, but it has not been offered" if verbose
+				end
+		end
 	end
 end
