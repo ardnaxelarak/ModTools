@@ -18,6 +18,7 @@ opts = Trollop::options do
 	opt :remove, "Remove a player from the game", :type => :strings, :multi => true
 	opt :add, "Add a player to a room", :type => :strings, :multi => true
 	opt :list_rooms, "List the players occupying each room"
+	opt :show_orders, "Display current transfer orders"
 	opt :help, "Show this message", :short => "h"
 	banner "\nand options that have mostly become unnecessary are:"
 	opt :scan, "Scan the rooms", :short => "s"
@@ -66,6 +67,7 @@ if opts[:create]
 	b.new_room
 	puts "Setting up second room..."
 	b.new_room
+	b.initialize_mail(@@wi)
 end
 
 b.new_room if opts[:new_room]
@@ -121,6 +123,16 @@ b.post(rl) if opts[:post]
 if opts[:list_rooms]
 	for room in b.rooms[b.roundnum]
 		puts "#{room.name}: #{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")}"
+	end
+end
+
+if opts[:show_orders]
+	for room in b.rooms[b.roundnum]
+		puts "#{room.name}"
+		for player in room.players
+			next unless room.to_send[player] && room.to_send[player].last
+			puts "   #{@@pl[player].name}: #{room.to_send[player].last.collect{|pid| @@pl[pid].name}.join{", "}}"
+		end
 	end
 end
 

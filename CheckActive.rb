@@ -1,6 +1,7 @@
 #!/usr/bin/ruby
 
 require_relative 'Bot2r1b'
+require_relative 'ScanTransfers'
 require 'yaml'
 
 puts Time.now.strftime("%d/%m/%Y %H:%M")

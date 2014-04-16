@@ -22,6 +22,6 @@ def scan_transfers(m, wi, pl, verbose = false)
 		sent = matches
 
 		puts "#{pl[sender].name} wants to send #{pl[sent].name}" if verbose
-		room.add_transfer(sender, sent)
+		room.add_transfer(sender, [sent])
 	end
 end

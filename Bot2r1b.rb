@@ -15,6 +15,10 @@ class Bot2r1b
 		@rooms = [[]]
 	end
 
+	def initialize_mail(wi)
+		@last_mail = wi.latest_geekmail
+	end
+
 	def save
 		File.write(@filename, YAML::dump(self))
 	end

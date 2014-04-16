@@ -31,7 +31,6 @@ def scan_room(wi, pl, room, only_new = true, verbose = false)
 	for action in actions
 		next unless actor = pl.get_player(action[0], room.players, verbose)
 		next unless actee = pl.get_player(action[2], room.players, verbose)
-		puts action[1]
 
 		case action[1]
 			when "vote"

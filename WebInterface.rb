@@ -95,7 +95,7 @@ class Interface
 		bolds = item.css('b').select{|b| b.parent.get_attribute(:class) != "quote" && b.parent.get_attribute(:class) != "gm_subject"}.collect{|b| b.text}
 	end
 
-	def geekmail_list
+	def geekmail_list(mid = nil)
 		check
 		pagenum = 1
 		messages = []
@@ -105,11 +105,13 @@ class Interface
 			for item in items
 				read = (item.css('input[name="msgread[]"]')[0].get_attribute(:value) == "1")
 				messageid = item.css('input[name="messagelist[]"]')[0].get_attribute(:value).to_i
+				break if messageid.to_i <= mid.to_i
 				from = item.css('td[class="gm_prefix"] a')[0].text
 				list = item.css('div').select{|div| div.get_attribute(:class) && div.get_attribute(:class).start_with?("js-rollable article")}
 				subject = item.css('td[style="gm_messageline"] a[style]')[0].text
 				messages.push({:read => read, :id => messageid, :from => from, :subject => subject})
 			end
+			break if messageid.to_i <= mid.to_i
 
 			pagenum += 1
 			page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"action" => "viewfolder", "folder" => "inbox", "pageID" => pagenum.to_s})
@@ -118,11 +120,21 @@ class Interface
 		return messages.uniq
 	end
 
+	def latest_geekmail
+		check
+		pagenum = 1
+		page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"action" => "viewfolder", "folder" => "inbox", "pageID" => pagenum.to_s})
+		items = page.parser.css('table[class="gm_messages"]')
+		return nil if items.length == 0
+		item = items.first
+		messageid = item.css('input[name="messagelist[]"]')[0].get_attribute(:value).to_i
+		return messageid
+	end
+
 	def mail_since(mid = nil)
 		check
-		list = geekmail_list
+		list = geekmail_list(mid)
 		# list.select!{|item| !item[:read]}
-		list.select!{|item| item[:id].to_i > mid.to_i}
 		list.reverse!
 		return list.collect{|item| item.merge(:body => get_geekmail(item[:id]))}
 	end
