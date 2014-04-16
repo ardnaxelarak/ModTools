@@ -11,7 +11,7 @@ def scan_actions(list)
 	for item in list
 		for post in item[:posts]
 			for action in post.scan(pattern)
-				actions.push([item[:user], action[1], action[2], action[0]])
+				actions.push([item[:user], action[1].downcase, action[2], action[0]])
 			end
 		end
 	end
@@ -30,9 +30,10 @@ def scan_room(wi, pl, room, only_new = true, verbose = false)
 	actions = scan_actions(list)
 	for action in actions
 		next unless actor = pl.get_player(action[0], room.players, verbose)
-		next unless actee = pl.get_player(action[1], room.players, verbose)
+		next unless actee = pl.get_player(action[2], room.players, verbose)
+		puts action[1]
 
-		case action[2]
+		case action[1]
 			when "vote"
 				puts "#{pl[actor].name} #{action[3] ? "lock" : ""}votes for #{pl[actee].name}" if verbose
 				room.vote(actor, actee, action[3])
