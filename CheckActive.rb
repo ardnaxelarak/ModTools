@@ -38,6 +38,7 @@ begin
 			b.update
 			b.scan(true)
 			b.tally(false, nil, false)
+			scan_transfers(b, @@wi, @@pl, true)
 			b.save
 		end
 	end
