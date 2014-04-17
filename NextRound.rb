@@ -24,9 +24,7 @@ end
 begin
 	if (b.class == Bot2r1b)
 		b.update
-		for room in b.rooms[b.roundnum]
-			@@wi.post(room.thread, "[b][color=purple]Round is over. Please stop posting.[/color][/b]")
-		end
+		b.auto_next_round("Friday, 14:00", "[b][color=purple]You may not colour reveal or colour share. Only full reveals are allowed.[/color][/b]")
 	end
 ensure
 	@@wi.stop

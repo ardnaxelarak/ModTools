@@ -72,7 +72,7 @@ end
 
 b.new_room if opts[:new_room]
 
-b.next_round if opts[:next_round]
+b.auto_next_round if opts[:next_round]
 
 Trollop::die "invalid round number" if opts[:round_given] && !b.rooms[opts[:round]]
 

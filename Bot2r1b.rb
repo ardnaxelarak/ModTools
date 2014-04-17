@@ -7,7 +7,7 @@ require_relative 'ScanRoom'
 require 'yaml'
 
 class Bot2r1b
-	attr_accessor :roundnum, :filename, :last_mail, :rooms
+	attr_accessor :roundnum, :filename, :last_mail, :rooms, :index
 
 	def initialize(filename)
 		@roundnum = 0
@@ -27,6 +27,13 @@ class Bot2r1b
 		return nil unless @rooms[@roundnum]
 		return nil if @rooms[@roundnum] == []
 		return @rooms[@roundnum].collect{|room| room.players}.flatten.uniq
+	end
+
+	def name_list(pids, verb = false)
+		return "" if pids.length == 0
+		return "#{@@pl[pids[0]].name}#{verb ? " is" : ""}" if pids.length == 1
+		return "#{pids.collect{|pid| @@pl[pid].name}.join{" and "}}#{verb ? " are" : ""}" if pids.length == 2
+		return "#{pids[0...-1].collect{|pid| @@pl[pid].name}.join(", ")}, and #{@@pl[pids[-1]].name}#{verb ? " are" : ""}"
 	end
 
 	def get_player_room(name, list = all_players, verbose = true,
@@ -108,6 +115,78 @@ class Bot2r1b
 			room = datum[0].next_round(datum[1], datum[2])
 			@rooms[@roundnum].push(room)
 			puts "#{room.name} created. (#{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
+		end
+	end
+
+	def auto_next_round(new_deadline, additional = nil)
+		newround = @roundnum + 1
+		@rooms[newround] = [] unless @rooms[newround]
+		unless @rooms[newround] == []
+			print "Data already exists for round #{newround + 1}. Overwrite? "
+			return unless gets.chomp.upcase == "YES"
+			@rooms[newround] = []
+		end
+
+		data = []
+
+		for oldroom in @rooms[@roundnum]
+			data.push([oldroom, nil, oldroom.players])
+			unless oldroom.leader
+				leader = oldroom.choose_leader
+				puts "#{@@pl[leader].name} has become leader of #{oldroom.name}!"
+			end
+		end
+
+		transfers = []
+		transfers[0] = []
+		transfers[1] = []
+		transfers[0][1] = data[0][0].get_transfer
+		transfers[1][0] = data[1][0].get_transfer
+
+		data[0][2] -= transfers[0][1]
+		data[1][2] += transfers[0][1]
+
+		data[1][2] -= transfers[1][0]
+		data[0][2] += transfers[1][0]
+
+		for piece in data
+			puts "Transferred #{name_list(piece[0].get_transfer)}"
+		end
+
+		for datum in data
+			otherroom = (data - datum)[0][0]
+			room = datum[0]
+			pl = datum[2]
+			text = "[b]Players beginning in #{room.name} in Round ##{@roundnum}:[/b]\n"
+			text << pl.collect{|pid| @@pl[pid].name}.join("\n")
+			text << "\n\n[b]Starting Leader:[/b]\n[o]#{@@pl[room.get_leader].name}[/o]\n\n"
+
+			text << "Room, please elect a leader and choose ONE PERSON to transfer from #{room.name} to #{otherroom.name}.\nLeader, please PM modkiwi your choice in bold in the body of the GM, written as either [b]send [i]player[/i][/b] or [b]transfer [i]player[/i][/b].\n"
+			text << "Links for Lazy Leaders:\n"
+			text << pl.collect{|pid| @@pl[pid].name}.collect{|name| "[url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=66b%20Transfer%20Orders&body=%5Bb%5Dtransfer%20#{name.gsub(" ", "%20")}%5B/b%5D]Send #{name}[/url]"}.join("\n")
+			
+			text << "\n\nTo ensure the proper functioning of the modbot, please follow these guidlines:\n- all in-game actions should be in bold\n- when referring to players, use either a username or nickname that [u]does not contain any spaces[/u]. To refer to Hal 2000, Hal2000 will work fine (as will Hal or 2000).\n- To vote for a player, use [b]vote [i]player[/i][/b]. To make a locked vote, use [b]lock vote [i]player[/i][/b] or [b]lockvote [i]player[/i][/b].\n- To offer leadership to another player, use [b]leaderoffer [i]player[/i][/b]. If you previously offered leadership to another player, this will override the previous offer; if your offer of leadership has already been accepted, this will have no function.\n- To accept leadership from another player, use [b]leaderaccept [i]player[/i][/b]. If this player has not offered you leadership, nothing will happen. If they have offered you leadership, you will become leader if they are the current leader, or otherwise will become the leader instead of them if they gain leadership in the future.\n- To revoke an offer of leadership, whether it has already been accepted or not (unless they have already become leader), use [b]revokeoffer[/b].\n\n"
+			text << "Your deadline to do this is #{new_deadline} BGG time (CST).\n\nIf you have a rules or role question, [COLOR=#FF9900][b][u][url=http://boardgamegeek.com/geekmail/compose?touser=Kiwi13cubed&subject=PBF%20#{index.gsub(" ", "%20")}%20-%20Clarification%20Request]PM me[/url][/u][/b][/COLOR], and I'll answer them in the main thread.\n"
+			text << "Please remember: [u]All players assigned into a room MUST NOT CHEAT and look at the other room's thread.[/u] They may only read and post in their assigned room and chambers (unless of course, your role power violates that)."
+			text << "\n\nadditional" if additional
+			datum[1] = @@wi.post_thread(134352, 194, "2R1B PBF ##{index} - #{datum[0].name} - Round #{@roundnum + 1}", text)
+		end
+
+		@roundnum = newround
+		for datum in data
+			room = datum[0].next_round(datum[1], datum[2])
+			@rooms[@roundnum].push(room)
+			puts "#{room.name} created. (#{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
+
+			text = ""
+			incoming = []
+			for toroom in data
+				next if datum == toroom
+				text << "#{name_list(datum[0].get_transfer, true)} sent to [thread=#{toroom[1]}]#{toroom[0].name}[/thread]\n"
+				incoming += toroom[0].get_transfer
+			end
+			text << "Everyone else remains in [thread=#{datum[1]}]#{datum[0].name}[/thread], joined by #{incoming.collect{|pid| @@pl[pid].name}.join{", "}}."
+			@@wi.post(datum[0].thread, text)
 		end
 	end
 

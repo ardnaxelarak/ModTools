@@ -52,6 +52,35 @@ class Interface
 		return match[1]
 	end
 
+	def post_thread(objectid, forumid, subject, content)
+		check
+		vals = {}
+		vals["action"] = "save"
+		vals["forumid"] = forumid
+		vals["objecttype"] = "thing"
+		vals["objectid"] = objectid
+		vals["subject"] = subject
+		vals["body"] = content
+		vals["B1"] = "Submit"
+		page = nil
+		show_message("Submitting post...") do
+			page = @agent.post("http://boardgamegeek.com/article/save", vals)
+		end
+		times = 0
+		while page.body.include?("You have posted too many items in too short a time--please wait a minute before posting again.") && times < 3
+			show_message("Too many posts in too short a time -- waiting one minute...") do
+				sleep 60
+			end
+			show_message("Retrying...") do
+				page = @agent.post("http://boardgamegeek.com/article/save", vals)
+			end
+			times += 1
+		end
+		match = page.links.select{|link| link.text == subject}[0].uri.to_s.match(/thread\/(\d+)/)
+		return nil unless match
+		return match[1]
+	end
+
 	def send_geekmail(user, subject, content)
 		check
 		page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"B1" => "Send", "action" => "save", "body" => content, "savecopy" => "1", "subject" => subject, "touser" => user})

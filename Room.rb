@@ -127,6 +127,7 @@ class Room
 	def choose_leader
 		plist = players.sort_by {|p| count(p) * 1000 - last(p)}.reverse
 		update_leader(plist.first)
+		@leader
 	end
 
 	def count(votee)
