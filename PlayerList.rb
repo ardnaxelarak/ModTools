@@ -5,7 +5,7 @@ class PlayerList
 		@players = []
 		f = File.open(filename, "r")
 
-		for line in f.lines
+		for line in f.each_line
 			p = Player.new(line.chomp);
 			@players[p.pid] = p
 		end

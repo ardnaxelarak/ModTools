@@ -22,9 +22,9 @@ if list.length == 0
 	exit
 end
 
-@@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
-@@wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
-@@wi.verbose = false
+$pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
+$wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
+$wi.verbose = false
 
 begin
 	for filename in list
@@ -39,11 +39,11 @@ begin
 			b.update
 			b.scan(true)
 			b.tally(false, nil, false)
-			scan_transfers(b, @@wi, @@pl, true)
+			scan_transfers(b, $wi, $pl, true)
 			b.save
 		end
 	end
 ensure
-	@@wi.stop
+	$wi.stop
 	puts END_LINE
 end

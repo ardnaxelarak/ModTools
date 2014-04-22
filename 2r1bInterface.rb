@@ -8,7 +8,7 @@ opts = Trollop::options do
 	#{__FILE__} [options]\n\nwhere common options are:"
 	opt :file, "File to use", :required => :true, :type => :string, :short => "f"
 	opt :create, "Create a new game", :short => "c"
-	opt :next_round, "Initialize next round"
+	opt :next_round, "Initialize next round", :short => "n"
 	opt :quiet, "Quiet mode", :short => "q"
 	opt :post, "Make a post", :short => "p"
 	opt :rooms, "Set rooms", :type => :strings
@@ -32,6 +32,7 @@ opts = Trollop::options do
 	opt :lock, "Lock a player's vote", :type => :strings, :multi => true
 	opt :unlock, "Unlock a player's vote", :type => :strings, :multi => true
 	opt :round, "Set the current round", :type => :int
+	opt :auto_next_round, "Initialize next round", :short => "N"
 end
 
 for vote in opts[:vote]
@@ -53,12 +54,12 @@ else
 end
 
 begin
-	@@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
+	$pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
 rescue
 	Trollop::die("cannot open players file")
 end
-@@wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
-@@wi.verbose = !opts[:quiet]
+$wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
+$wi.verbose = !opts[:quiet]
 
 b.update
 
@@ -67,20 +68,23 @@ if opts[:create]
 	b.new_room
 	puts "Setting up second room..."
 	b.new_room
-	b.initialize_mail(@@wi)
+	b.initialize_mail($wi)
 end
 
 b.new_room if opts[:new_room]
 
-b.auto_next_round if opts[:next_round]
+b.next_round if opts[:next_round]
+b.auto_next_round("Friday, 16:00", "[b][color=purple]You may not colour reveal or colour share. Only full reveals are allowed.[/color][/b]") if opts[:auto_next_round]
 
 Trollop::die "invalid round number" if opts[:round_given] && !b.rooms[opts[:round]]
 
 Trollop::die "rooms not recognized" unless rl = b.get_rooms(opts[:rooms])
-Trollop::die(:add, "must select a room") if opts[:add_given] && rl.length = 0
+Trollop::die(:add, "must select a room") if opts[:add_given] && rl.length == 0
 Trollop::die("Players can only be added to one room") if opts[:add_given] && rl.length > 1
 
-b.transfer(opts[:transfer][0], opts[:transfer][1..-1]) if opts[:transfer_given]
+for transfer in opts[:transfer]
+	b.transfer(transfer[0], transfer[1..-1])
+end
 
 for vote in opts[:vote]
 	b.vote(vote[0], vote[1], false)
@@ -112,7 +116,7 @@ b.tally(true, rl) if opts[:force_tally]
 
 if opts[:show_votes]
 	for room in rl
-		puts room.tally(@@pl)
+		puts room.tally($pl)
 	end
 end
 
@@ -122,7 +126,7 @@ b.post(rl) if opts[:post]
 
 if opts[:list_rooms]
 	for room in b.rooms[b.roundnum]
-		puts "#{room.name}: #{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")}"
+		puts "#{room.name}: #{room.players.collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")}"
 	end
 end
 
@@ -131,7 +135,7 @@ if opts[:show_orders]
 		puts "#{room.name}"
 		for player in room.players
 			next unless room.to_send[player] && room.to_send[player].last
-			puts "   #{@@pl[player].name}: #{room.to_send[player].last.collect{|pid| @@pl[pid].name}.join{", "}}"
+			puts "   #{$pl[player].name}: #{room.to_send[player].last.collect{|pid| $pl[pid].name}.join{", "}}"
 		end
 	end
 end

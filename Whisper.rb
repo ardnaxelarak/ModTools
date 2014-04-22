@@ -30,12 +30,12 @@ end
 THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
 
 actname = File.expand_path("../active_games", THIS_FILE)
-@@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
-@@wi = Interface.new("personal_auth")
+$pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
+$wi = Interface.new("personal_auth")
 
 pieces = File.read("personal_auth").split("\n")
 user = pieces[0]
-uid = @@pl.get_player(user)
+uid = $pl.get_player(user)
 
 list = File.read(actname).split("\n").uniq
 
@@ -48,8 +48,8 @@ end
 
 list = []
 while ARGV.length > 0
-	next unless id = @@pl.get_player(ARGV.shift, room.players)
-	list.push(@@pl[id].name)
+	next unless id = $pl.get_player(ARGV.shift, room.players)
+	list.push($pl[id].name)
 end
 
 puts "Enter your message to the following users: #{list.join(", ")}"
@@ -60,7 +60,7 @@ end
 text.chomp!
 exit if text == ""
 
-@@wi.post(room.thread, "[b]whisper #{list.join(", ")}[/b]\n[o]#{Rot13.new(text)}[/o]")
-@@wi.send_geekmail(list.join(","), "Whisper", text)
+$wi.post(room.thread, "[b]whisper #{list.join(", ")}[/b]\n[o]#{Rot13.new(text)}[/o]")
+$wi.send_geekmail(list.join(","), "Whisper", text)
 
-@@wi.stop
+$wi.stop

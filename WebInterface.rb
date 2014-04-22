@@ -112,8 +112,8 @@ class Interface
 
 	def login_from_file(filename)
 		f = File.open(filename)
-		username = f.lines.next.chomp
-		password = f.lines.next.chomp
+		username = f.each_line.next.chomp
+		password = f.each_line.next.chomp
 		login(username, password)
 	end
 

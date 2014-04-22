@@ -2,7 +2,7 @@ require_relative "Player"
 require_relative "Vote"
 
 class Room
-	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked, :last_article, :to_send, :added, :removed, :offered_to, :accepted
+	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked, :last_article, :to_send, :added, :removed, :offered_to, :accepted, :weight
 
 	def initialize(name, thread, players, leader = nil)
 		@name = name
@@ -13,6 +13,7 @@ class Room
 		@to_send = {}
 		@offered_to = {}
 		@accepted = {}
+		@weight = {}
 		@index = 0
 		@last_tally = 0
 		@leader = leader
@@ -26,6 +27,7 @@ class Room
 			@votes_for[player] = []
 			@votes_from[player] = []
 			@to_send[player] = []
+			@weight[player] = 1
 		end
 	end
 
@@ -47,6 +49,11 @@ class Room
 	def revoke_offer(pid1)
 		@offered_to[pid1] = nil
 		@accepted[pid1] = nil
+	end
+
+	def total_votes
+		@weight.collect!{|item| item ? item : 1}
+		return @players.collect{|pid| @weight[pid]}.reduce(0, :+)
 	end
 
 	def clear_votes
@@ -133,7 +140,8 @@ class Room
 	def count(votee)
 		count = 0
 		for vote in @votes_for[votee]
-			count += 1 if current_vote?(vote)
+			@weight[vote.voter] = 1 unless @weight[vote.voter]
+			count += @weight[vote.voter] if current_vote?(vote)
 		end
 		return count
 	end

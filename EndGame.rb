@@ -5,8 +5,8 @@ require_relative 'ScanTransfers'
 
 THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
 
-@@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
-@@wi = Interface.new
+$pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
+$wi = Interface.new
 
 filename = "/home/kiwi/62b"
 if (File.exist?(filename))
@@ -22,10 +22,10 @@ begin
 
 	rooms = m.rooms[m.roundnum]
 	for room in rooms
-		@@wi.post(room.thread, message)
+		$wi.post(room.thread, message)
 	end
 
-	scan_transfers(m, @@wi, @@pl, true)
+	scan_transfers(m, $wi, $pl, true)
 
 	t_england = rooms[1].get_transfer
 	t_ruritania = rooms[0].get_transfer
@@ -33,16 +33,16 @@ begin
 	message = "[b][color=purple]Like all good things, this game has come to an end."
 	message << "\n\nThe final transfers happened as follows:"
 	if t_england
-		message << "\n#{@@pl[rooms[1].leader].name} is the leader of England and decided to send #{@@pl[t_england].name} to Ruritania."
+		message << "\n#{$pl[rooms[1].leader].name} is the leader of England and decided to send #{$pl[t_england].name} to Ruritania."
 	else
 		t_england = rooms[1].players.shuffle[0]
-		message << "\n#{@@pl[rooms[1].leader].name} is the leader of England, but did not give any transfer orders, so #{@@pl[t_england].name} was randomly selected to be sent to Ruritania."
+		message << "\n#{$pl[rooms[1].leader].name} is the leader of England, but did not give any transfer orders, so #{$pl[t_england].name} was randomly selected to be sent to Ruritania."
 	end
 	if t_ruritania
-		message << "\n#{@@pl[rooms[0].leader].name} is the leader of Ruritania and decided to send #{@@pl[t_ruritania].name} to England."
+		message << "\n#{$pl[rooms[0].leader].name} is the leader of Ruritania and decided to send #{$pl[t_ruritania].name} to England."
 	else
 		t_england = rooms[1].players.shuffle[0]
-		message << "\n#{@@pl[rooms[0].leader].name} is the leader of Ruritania, but did not give any transfer orders, so #{@@pl[t_ruritania].name} was randomly selected to be sent to England."
+		message << "\n#{$pl[rooms[0].leader].name} is the leader of Ruritania, but did not give any transfer orders, so #{$pl[t_ruritania].name} was randomly selected to be sent to England."
 	end
 
 	if t_england == 8 #rathstar sent
@@ -64,7 +64,7 @@ begin
 	message << "\n\nFinally, as much as I hate to say it, thanks to modkiwi for counting all those votes and all his snarky comments. My favorite part was when Borgoto offered to paint him like me so that he could kill me and take my place. I am, of course, glad that did not actually happen. Then again, no one would know if I really were ModBot replacing Kiwi..."
 
 	puts message
-	@@wi.post(1138843, message)
+	$wi.post(1138843, message)
 ensure
-	@@wi.stop
+	$wi.stop
 end

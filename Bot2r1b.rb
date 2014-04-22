@@ -31,20 +31,20 @@ class Bot2r1b
 
 	def name_list(pids, verb = false)
 		return "" if pids.length == 0
-		return "#{@@pl[pids[0]].name}#{verb ? " is" : ""}" if pids.length == 1
-		return "#{pids.collect{|pid| @@pl[pid].name}.join{" and "}}#{verb ? " are" : ""}" if pids.length == 2
-		return "#{pids[0...-1].collect{|pid| @@pl[pid].name}.join(", ")}, and #{@@pl[pids[-1]].name}#{verb ? " are" : ""}"
+		return "#{$pl[pids[0]].name}#{verb ? " is" : ""}" if pids.length == 1
+		return "#{pids.collect{|pid| $pl[pid].name}.join{" and "}}#{verb ? " are" : ""}" if pids.length == 2
+		return "#{pids[0...-1].collect{|pid| $pl[pid].name}.join(", ")}, and #{$pl[pids[-1]].name}#{verb ? " are" : ""}"
 	end
 
 	def get_player_room(name, list = all_players, verbose = true,
 						none_message = nil, many_message = nil,
 						room_message = nil)
 		room_message = "%s: No room found\n"
-		return nil unless (pid = @@pl.get_player(name, list, verbose, none_message, many_message))
+		return nil unless (pid = $pl.get_player(name, list, verbose, none_message, many_message))
 		for r in @rooms[@roundnum]
 			return [pid, r] if r.contain?(pid)
 		end
-		printf(room_message, @@pl[pid].name)
+		printf(room_message, $pl[pid].name)
 		return nil
 	end
 
@@ -58,9 +58,9 @@ class Bot2r1b
 		print "- "
 		while (line = gets)
 			line.chomp!
-			if (opt = @@pl.get_player(line))
+			if (opt = $pl.get_player(line))
 				players.push(opt)
-				puts "Added #{@@pl[opt].name}"
+				puts "Added #{$pl[opt].name}"
 			end
 			print "- "
 		end
@@ -68,7 +68,7 @@ class Bot2r1b
 		players.uniq!
 		room = Room.new(name, thread, players)
 		@rooms[@roundnum].push(room)
-		puts "#{room.name} created. (#{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
+		puts "#{room.name} created. (#{room.players.collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
 	end
 
 	def next_round
@@ -88,21 +88,21 @@ class Bot2r1b
 			data.push([oldroom, thread, oldroom.players])
 			unless oldroom.leader
 				leader = oldroom.choose_leader
-				puts "#{@@pl[leader].name} has become leader of #{oldroom.name}!"
+				puts "#{$pl[leader].name} has become leader of #{oldroom.name}!"
 			end
 		end
 
 		for fromdata in data
 			for todata in data
 				next if fromdata == todata
-				puts "Transfers from #{fromdata[0].name} to #{todata[0].name} (#{fromdata[0].leader_name(@@pl)}):"
+				puts "Transfers from #{fromdata[0].name} to #{todata[0].name} (#{fromdata[0].leader_name($pl)}):"
 				print "- "
 				while (line = gets)
 					line.chomp!
-					if (pid = @@pl.get_player(line, fromdata[0].players))
+					if (pid = $pl.get_player(line, fromdata[0].players))
 						fromdata[2] -= [pid]
 						todata[2] += [pid]
-						puts "Transferred #{@@pl[pid].name}"
+						puts "Transferred #{$pl[pid].name}"
 					end
 					print "- "
 				end
@@ -114,7 +114,7 @@ class Bot2r1b
 		for datum in data
 			room = datum[0].next_round(datum[1], datum[2])
 			@rooms[@roundnum].push(room)
-			puts "#{room.name} created. (#{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
+			puts "#{room.name} created. (#{room.players.collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
 		end
 	end
 
@@ -130,63 +130,69 @@ class Bot2r1b
 		data = []
 
 		for oldroom in @rooms[@roundnum]
-			data.push([oldroom, nil, oldroom.players])
+			data.push([oldroom, nil, oldroom.players, nil])
 			unless oldroom.leader
 				leader = oldroom.choose_leader
-				puts "#{@@pl[leader].name} has become leader of #{oldroom.name}!"
+				puts "#{$pl[leader].name} has become leader of #{oldroom.name}!"
 			end
 		end
 
-		transfers = []
-		transfers[0] = []
-		transfers[1] = []
-		transfers[0][1] = data[0][0].get_transfer
-		transfers[1][0] = data[1][0].get_transfer
+		data[0][3] = data[0][0].get_transfer
+		data[1][3] = data[1][0].get_transfer
 
-		data[0][2] -= transfers[0][1]
-		data[1][2] += transfers[0][1]
+		for datum in data
+			next if datum[3]
+			opts = datum[0].players - [datum[0].leader]
+			# should really check how many transfers need to happen
+			datum[3] = opts[0...1]
+			puts "No orders for #{datum[0].name}; randomly selected #{name_list(datum[3])}"
+		end
 
-		data[1][2] -= transfers[1][0]
-		data[0][2] += transfers[1][0]
+		data[0][2] -= data[0][3]
+		data[1][2] += data[0][3]
+
+		data[1][2] -= data[1][3]
+		data[0][2] += data[1][3]
 
 		for piece in data
-			puts "Transferred #{name_list(piece[0].get_transfer)}"
+			puts "Transferred #{name_list(piece[3])}"
 		end
 
 		for datum in data
-			otherroom = (data - datum)[0][0]
+			otherroom = (data - [datum])[0][0]
 			room = datum[0]
 			pl = datum[2]
-			text = "[b]Players beginning in #{room.name} in Round ##{@roundnum}:[/b]\n"
-			text << pl.collect{|pid| @@pl[pid].name}.join("\n")
-			text << "\n\n[b]Starting Leader:[/b]\n[o]#{@@pl[room.get_leader].name}[/o]\n\n"
+			text = "[b]Players beginning in #{room.name} in Round ##{newround + 1}:[/b]\n"
+			text << pl.collect{|pid| $pl[pid].name}.join("\n")
+			text << "\n\n[b]Starting Leader:[/b]\n[o]#{$pl[room.leader].name}[/o]\n\n"
 
 			text << "Room, please elect a leader and choose ONE PERSON to transfer from #{room.name} to #{otherroom.name}.\nLeader, please PM modkiwi your choice in bold in the body of the GM, written as either [b]send [i]player[/i][/b] or [b]transfer [i]player[/i][/b].\n"
 			text << "Links for Lazy Leaders:\n"
-			text << pl.collect{|pid| @@pl[pid].name}.collect{|name| "[url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=66b%20Transfer%20Orders&body=%5Bb%5Dtransfer%20#{name.gsub(" ", "%20")}%5B/b%5D]Send #{name}[/url]"}.join("\n")
+			text << pl.collect{|pid| $pl[pid].name}.collect{|name| "[url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=#{index.gsub(" ", "%20")}%20Transfer%20Orders&body=%5Bb%5Dtransfer%20#{name.gsub(" ", "%20")}%5B/b%5D]Send #{name}[/url]"}.join("\n")
 			
 			text << "\n\nTo ensure the proper functioning of the modbot, please follow these guidlines:\n- all in-game actions should be in bold\n- when referring to players, use either a username or nickname that [u]does not contain any spaces[/u]. To refer to Hal 2000, Hal2000 will work fine (as will Hal or 2000).\n- To vote for a player, use [b]vote [i]player[/i][/b]. To make a locked vote, use [b]lock vote [i]player[/i][/b] or [b]lockvote [i]player[/i][/b].\n- To offer leadership to another player, use [b]leaderoffer [i]player[/i][/b]. If you previously offered leadership to another player, this will override the previous offer; if your offer of leadership has already been accepted, this will have no function.\n- To accept leadership from another player, use [b]leaderaccept [i]player[/i][/b]. If this player has not offered you leadership, nothing will happen. If they have offered you leadership, you will become leader if they are the current leader, or otherwise will become the leader instead of them if they gain leadership in the future.\n- To revoke an offer of leadership, whether it has already been accepted or not (unless they have already become leader), use [b]revokeoffer[/b].\n\n"
 			text << "Your deadline to do this is #{new_deadline} BGG time (CST).\n\nIf you have a rules or role question, [COLOR=#FF9900][b][u][url=http://boardgamegeek.com/geekmail/compose?touser=Kiwi13cubed&subject=PBF%20#{index.gsub(" ", "%20")}%20-%20Clarification%20Request]PM me[/url][/u][/b][/COLOR], and I'll answer them in the main thread.\n"
 			text << "Please remember: [u]All players assigned into a room MUST NOT CHEAT and look at the other room's thread.[/u] They may only read and post in their assigned room and chambers (unless of course, your role power violates that)."
-			text << "\n\nadditional" if additional
-			datum[1] = @@wi.post_thread(134352, 194, "2R1B PBF ##{index} - #{datum[0].name} - Round #{@roundnum + 1}", text)
+			text << "\n\n#{additional}" if additional
+			datum[1] = $wi.post_thread(134352, 194, "2R1B PBF ##{index} - #{datum[0].name} - Round #{newround + 1}", text)
 		end
 
 		@roundnum = newround
 		for datum in data
 			room = datum[0].next_round(datum[1], datum[2])
 			@rooms[@roundnum].push(room)
-			puts "#{room.name} created. (#{room.players.collect{|ind| @@pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
+			puts "#{room.name} created. (#{room.players.collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
 
-			text = ""
+			text = "[color=#009900]"
 			incoming = []
 			for toroom in data
 				next if datum == toroom
-				text << "#{name_list(datum[0].get_transfer, true)} sent to [thread=#{toroom[1]}]#{toroom[0].name}[/thread]\n"
-				incoming += toroom[0].get_transfer
+				text << "#{name_list(datum[3], true)} sent to [thread=#{toroom[1]}]#{toroom[0].name}[/thread]\n"
+				incoming += toroom[3]
 			end
-			text << "Everyone else remains in [thread=#{datum[1]}]#{datum[0].name}[/thread], joined by #{incoming.collect{|pid| @@pl[pid].name}.join{", "}}."
-			@@wi.post(datum[0].thread, text)
+			text << "Everyone else remains in [thread=#{datum[1]}]#{datum[0].name}[/thread], joined by #{incoming.collect{|pid| $pl[pid].name}.join{", "}}."
+			text << "[/color]"
+			$wi.post(datum[0].thread, text)
 		end
 	end
 
@@ -194,7 +200,7 @@ class Bot2r1b
 		rl = @rooms[@roundnum] unless rl
 		for room in rl
 			if force || room.need_tally?
-				if @@wi.post(room.thread, room.tally(@@pl, true))
+				if $wi.post(room.thread, room.tally($pl, true))
 					puts "Updated vote tally of #{room.name}" if verbose
 				else
 					puts "Update of #{room.name} failed!"
@@ -208,7 +214,7 @@ class Bot2r1b
 	def scan(verbose = false, only_new = true, rl = nil)
 		rl = @rooms[@roundnum] unless rl
 		for room in rl
-			scan_room(@@wi, @@pl, room, only_new, verbose)
+			scan_room($wi, $pl, room, only_new, verbose)
 		end
 	end
 
@@ -217,7 +223,7 @@ class Bot2r1b
 		(sender, room) = pid_room
 		sent = []
 		for name in list
-			return unless cur = @@pl.get_player(name, room.players)
+			return unless cur = $pl.get_player(name, room.players)
 			sent.push(cur)
 		end
 		room.add_transfer(sender, sent)
@@ -226,7 +232,7 @@ class Bot2r1b
 	def vote(p1, p2, locked = false)
 		return unless (pid_room = get_player_room(p1))
 		(voter, room) = pid_room
-		return unless (votee = @@pl.get_player(p2, room.players))
+		return unless (votee = $pl.get_player(p2, room.players))
 		room.vote(voter, votee, locked)
 	end
 
@@ -234,7 +240,7 @@ class Bot2r1b
 		return unless (pid_room = get_player_room(p1))
 		(pid, room) = pid_room
 
-		puts "#{@@pl[pid]} has been appointed leader of #{room.name}"
+		puts "#{$pl[pid]} has been appointed leader of #{room.name}"
 		room.update_leader(pid)
 	end
 
@@ -245,7 +251,7 @@ class Bot2r1b
 	end
 
 	def add_player(p1, r1)
-		return unless (pid = @@pl.get_player(p1))
+		return unless (pid = $pl.get_player(p1))
 		return if @rooms[@roundnum].collect{|r| r.players}.flatten.include?(pid)
 		r1.add_player(pid)
 	end
@@ -304,7 +310,7 @@ class Bot2r1b
 			return
 		end
 		for room in rl
-			@@wi.post(room.thread, text)
+			$wi.post(room.thread, text)
 		end
 	end
 
@@ -316,7 +322,7 @@ class Bot2r1b
 	def print_status
 		puts "Round #{@roundnum + 1}"
 		for room in @rooms[@roundnum]
-			puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader ? @@pl[room.leader].name : "No leader"} (#{room.get_transfer ? room.get_transfer.collect{|pid| @@pl[pid].name}.join(", ") : "none"})"
+			puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader ? $pl[room.leader].name : "No leader"} (#{room.get_transfer ? room.get_transfer.collect{|pid| $pl[pid].name}.join(", ") : "none"})"
 		end
 	end
 
@@ -327,6 +333,7 @@ class Bot2r1b
 			room.added = [] unless room.added
 			room.removed = [] unless room.removed
 			room.to_send = {} unless room.to_send
+			room.weight = {} unless room.weight
 		end
 	end
 end

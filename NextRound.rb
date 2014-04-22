@@ -11,8 +11,8 @@ end
 
 THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
 
-@@pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
-@@wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
+$pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
+$wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
 
 if (File.exist?(filename))
 	b = YAML::load(File.read(filename))
@@ -27,5 +27,5 @@ begin
 		b.auto_next_round("Friday, 14:00", "[b][color=purple]You may not colour reveal or colour share. Only full reveals are allowed.[/color][/b]")
 	end
 ensure
-	@@wi.stop
+	$wi.stop
 end
