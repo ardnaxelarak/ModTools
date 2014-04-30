@@ -7,7 +7,7 @@ require_relative "PlayerList"
 def scan_actions(list)
 	return if list.length <= 0
 	actions = []
-	pattern = /(lock ?)?(vote|leaderoffer|leaderaccept|revokeoffer|mayor)(?: (\w+))?/i
+	pattern = /(lock ?)?(vote|leaderoffer|leaderaccept|revokeoffer|mayor)(?: (?:for )?(\w+))?/i
 	for item in list
 		for post in item[:posts]
 			for action in post.scan(pattern)
