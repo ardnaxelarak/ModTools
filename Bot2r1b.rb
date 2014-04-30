@@ -88,7 +88,7 @@ class Bot2r1b
 			data.push([oldroom, thread, oldroom.players])
 			unless oldroom.leader
 				leader = oldroom.choose_leader
-				puts "#{$pl[leader].name} has become leader of #{oldroom.name}!"
+				puts "#{$pl[leader].name} has become leader of #{oldroom.name}!" if leader
 			end
 		end
 

@@ -37,7 +37,7 @@ def scan_room(wi, pl, room, only_new = true, verbose = false)
 				room.revoke_offer(actor)
 			when "mayor"
 				puts "#{pl[actor].name} has public revealed as mayor" if verbose
-				room.weight[actor] = 2
+				room.weight[actor] = 2.5
 		end
 
 		next unless action[2]

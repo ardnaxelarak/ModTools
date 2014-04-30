@@ -14,6 +14,7 @@ class PlayerList
 	end
 
 	def [] (index)
+		return nil unless @players
 		return @players[index]
 	end
 
