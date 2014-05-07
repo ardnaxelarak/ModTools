@@ -4,5 +4,5 @@ active_games
 documentation/*.aux
 documentation/*.toc
 documentation/*.log
-web/include/psl-config.php
+web/include/psl-configreal.php
 Database.rb
