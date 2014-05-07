@@ -1,7 +1,8 @@
 #!/usr/bin/ruby
 
 require_relative 'Bot2r1b'
-require_relative 'ScanTransfers'
+require_relative 'CheckMail'
+require_relative 'Database'
 require 'yaml'
 
 puts Time.now.strftime("%d/%m/%Y %H:%M")
@@ -27,6 +28,7 @@ $wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
 $wi.verbose = false
 
 begin
+	check_mail(true)
 	for filename in list
 		puts "Opening #{filename}"
 		if (File.exist?(filename))
@@ -39,11 +41,12 @@ begin
 			b.update
 			b.scan(true)
 			b.tally(false, nil, false)
-			scan_transfers(b, $wi, $pl, true)
+			# scan_transfers(b, $wi, $pl, true)
 			b.save
 		end
 	end
 ensure
 	$wi.stop
+	$conn.close
 	puts END_LINE
 end

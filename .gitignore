@@ -4,3 +4,5 @@ active_games
 documentation/*.aux
 documentation/*.toc
 documentation/*.log
+web/ignore/psl-config.php
+Database.rb

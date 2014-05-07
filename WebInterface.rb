@@ -124,7 +124,7 @@ class Interface
 		bolds = item.css('b').select{|b| b.parent.get_attribute(:class) != "quote" && b.parent.get_attribute(:class) != "gm_subject"}.collect{|b| b.text}
 	end
 
-	def geekmail_list(mid = nil)
+	def geekmail_list(mid = nil, unreadonly = false)
 		check
 		pagenum = 1
 		messages = []
@@ -133,6 +133,7 @@ class Interface
 		while (items.length > 0)
 			for item in items
 				read = (item.css('input[name="msgread[]"]')[0].get_attribute(:value) == "1")
+				next if read && unreadonly
 				messageid = item.css('input[name="messagelist[]"]')[0].get_attribute(:value).to_i
 				break if messageid.to_i <= mid.to_i
 				from = item.css('td[class="gm_prefix"] a')[0].text

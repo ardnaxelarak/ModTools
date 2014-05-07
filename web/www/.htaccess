@@ -1,0 +1,4 @@
+Options +FollowSymLinks
+RewriteEngine on
+RewriteRule users/(.*)/ users.php?username=$1
+RewriteRule users/(.*) users.php?username=$1
