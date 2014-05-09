@@ -1,12 +1,10 @@
 #!/usr/bin/ruby
 
-require_relative 'ModTools'
+require_relative 'Bot2r1b'
 require_relative 'ScanTransfers'
+require_relative 'Setup'
 
 THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
-
-$pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
-$wi = Interface.new
 
 filename = "/home/kiwi/62b"
 if (File.exist?(filename))
@@ -66,5 +64,5 @@ begin
 	puts message
 	$wi.post(1138843, message)
 ensure
-	$wi.stop
+	close_connections
 end

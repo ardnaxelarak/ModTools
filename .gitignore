@@ -1,8 +1,7 @@
-default_auth
+Setup.rb
 active_games
 *.swp
 documentation/*.aux
 documentation/*.toc
 documentation/*.log
 web/include/psl-configreal.php
-Database.rb

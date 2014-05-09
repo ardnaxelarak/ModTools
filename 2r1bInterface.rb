@@ -2,6 +2,7 @@
 
 require 'trollop'
 require_relative "Bot2r1b"
+require_relative "Setup"
 
 opts = Trollop::options do
 	banner "Usage:
@@ -53,12 +54,6 @@ else
 	b = Bot2r1b.new(opts[:file])
 end
 
-begin
-	$pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
-rescue
-	Trollop::die("cannot open players file")
-end
-$wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
 $wi.verbose = !opts[:quiet]
 
 b.update
@@ -116,7 +111,7 @@ b.tally(true, rl) if opts[:force_tally]
 
 if opts[:show_votes]
 	for room in rl
-		puts room.tally($pl)
+		puts room.tally
 	end
 end
 
@@ -143,3 +138,5 @@ end
 b.print_status if opts[:status]
 
 b.save
+
+close_connections

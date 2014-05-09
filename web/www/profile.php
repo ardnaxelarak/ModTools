@@ -19,7 +19,7 @@ if ($logged) {
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>Secure Login: Protected Page</title>
+		<title>User Profile: <?php echo $username ?></title>
 		<link rel="stylesheet" href="styles/main.css" />
 	</head>
 	<?php print_header($username) ?>

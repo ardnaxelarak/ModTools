@@ -1,16 +1,19 @@
 require_relative 'Player'
 
 class PlayerList
-	def initialize(filename)
+	def initialize(conn)
 		@players = []
-		f = File.open(filename, "r")
 
-		for line in f.each_line
-			p = Player.new(line.chomp);
+		pquery = conn.query("SELECT pid, username FROM players ORDER BY pid")
+		pquery.each do |row|
+			nicks = []
+			nquery = conn.query("SELECT nick FROM nicks WHERE pid=#{row[0]}")
+			nquery.each do |nickrow|
+				nicks.push(nickrow[0])
+			end
+			p = Player.new(row[0].to_i, row[1], nicks)
 			@players[p.pid] = p
 		end
-
-		f.close
 	end
 
 	def [] (index)

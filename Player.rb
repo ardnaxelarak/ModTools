@@ -2,16 +2,11 @@ class Player
 	attr_reader :pid, :name, :votes, :alts
 	MAX_CHECK = 5
 
-	def initialize(line)
-		pieces = line.split(":")
-		@pid = pieces[0].to_i
-		@name = pieces[1]
+	def initialize(pid, name, alts)
+		@pid = pid
+		@name = name
 		@capname = @name.upcase
-		if pieces.length > 2
-			@alts = pieces[2].split(",").collect {|alt| alt.upcase}
-		else
-			@alts = []
-		end
+		@alts = alts
 
 		@votes = []
 	end

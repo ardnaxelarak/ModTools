@@ -5,15 +5,20 @@ require 'mechanize'
 
 class Interface
 	attr_accessor :agent, :logged_in, :verbose
-	def initialize(filename = nil)
+	def initialize(conn)
 		@verbose = true
 		@agent = Mechanize.new
 		@logged_in = false
-		@filename = filename
+		if conn
+			res = conn.query("SELECT username, password FROM logins WHERE id=0")
+			@credentials = res.fetch_row
+		else
+			@credentials = nil
+		end
 	end
 
 	def check
-		login_from_file(@filename) unless @logged_in || !@filename
+		login_from_cred if @credentials
 	end
 
 	def show_message(message)
@@ -110,11 +115,11 @@ class Interface
 		@agent.post("http://boardgamegeek.com/geekrecommend.php", {"action" => "recommend", "itemid" => itemid.to_s, "itemtype" => "article", "value" => "1"})
 	end
 
-	def login_from_file(filename)
-		f = File.open(filename)
-		username = f.each_line.next.chomp
-		password = f.each_line.next.chomp
-		login(username, password)
+	def login_from_cred
+		return false unless @credentials
+		res = login(@credentials[0], @credentials[1])
+		@credentials = nil
+		return res
 	end
 
 	def get_geekmail(id)

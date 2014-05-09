@@ -1,5 +1,6 @@
 require_relative "Player"
 require_relative "Vote"
+require_relative "Setup"
 
 class Room
 	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked, :last_article, :to_send, :added, :removed, :offered_to, :accepted, :weight
@@ -97,15 +98,15 @@ class Room
 		return pl[@leader].name
 	end
 
-	def tally(pl, update = false)
+	def tally(update = false)
 		text = ""
 		for pid in @added
-			text << "[b][color=purple]#{pl[pid].name} has joined the room![/color][/b]\n"
+			text << "[b][color=purple]#{$pl[pid].name} has joined the room![/color][/b]\n"
 		end
 		for pid in @removed
-			text << "[b][color=purple]#{pl[pid].name} has been removed![/color][/b]\n"
+			text << "[b][color=purple]#{$pl[pid].name} has been removed![/color][/b]\n"
 		end
-		text << "[b][color=purple]#{pl[@leader].name} has become leader![/color][/b]\n" if @last_leader != @leader
+		text << "[b][color=purple]#{$pl[@leader].name} has become leader![/color][/b]\n" if @last_leader != @leader
 		text << "\n" unless text == ""
 		text << "[color=#009900]Current Leader: #{leader_name(pl)}"
 		text << "\n\nVOTE TALLY:"
@@ -113,10 +114,10 @@ class Room
 		plist = players.sort_by {|p| count(p) * 1000 - last(p)}
 		for p in plist.reverse
 			next if @votes_for[p].length == 0
-			text << "\n#{pl[p].name} - #{count(p)} - #{@votes_for[p].collect {|vote| vote_desc(pl, vote)}.join(", ")}"
+			text << "\n#{$pl[p].name} - #{count(p)} - #{@votes_for[p].collect {|vote| vote_desc(vote)}.join(", ")}"
 		end
 
-		nv = players.select{|p| @votes_from[p].length == 0}.sort_by{|p| pl[p].name.upcase}.collect{|p| pl[p].name}
+		nv = players.select{|p| @votes_from[p].length == 0}.sort_by{|p| $pl[p].name.upcase}.collect{|p| $pl[p].name}
 		text << "\n\nNot voting: #{nv.join(", ")}" if nv.length > 0
 		text << "\n\n'*' indicates a locked vote."
 
@@ -204,8 +205,8 @@ class Room
 		return @locked[vote.voter]
 	end
 
-	def vote_desc(pl, vote, old_prefix = "[-]", old_suffix = "[/-]", locked_ind = "*")
-		text = pl[vote.voter].name
+	def vote_desc(vote, old_prefix = "[-]", old_suffix = "[/-]", locked_ind = "*")
+		text = $pl[vote.voter].name
 		text += locked_ind if locked_vote?(vote)
 		text += "(#{vote.order + 1})"
 		text = old_prefix + text + old_suffix unless current_vote?(vote) 

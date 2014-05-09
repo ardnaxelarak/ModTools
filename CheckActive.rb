@@ -1,9 +1,11 @@
 #!/usr/bin/ruby
 
 require_relative 'Bot2r1b'
-require_relative 'CheckMail'
-require_relative 'Database'
+require_relative 'Scan'
+require_relative 'Setup'
 require 'yaml'
+
+$wi.verbose = false
 
 puts Time.now.strftime("%d/%m/%Y %H:%M")
 
@@ -23,10 +25,6 @@ if list.length == 0
 	exit
 end
 
-$pl = PlayerList.new(File.expand_path("../players", THIS_FILE))
-$wi = Interface.new(File.expand_path("../default_auth", THIS_FILE))
-$wi.verbose = false
-
 begin
 	check_mail(true)
 	for filename in list
@@ -41,12 +39,11 @@ begin
 			b.update
 			b.scan(true)
 			b.tally(false, nil, false)
-			# scan_transfers(b, $wi, $pl, true)
+			# scan_transfers(b, true)
 			b.save
 		end
 	end
 ensure
-	$wi.stop
-	$conn.close
+	close_connections
 	puts END_LINE
 end

@@ -1,9 +1,8 @@
 #!/usr/bin/ruby
 
-require_relative 'PlayerList'
-require_relative 'WebInterface'
+require_relative 'Setup'
 require_relative 'Room'
-require_relative 'ScanRoom'
+require_relative 'Scan'
 require 'yaml'
 
 class Bot2r1b
@@ -15,8 +14,8 @@ class Bot2r1b
 		@rooms = [[]]
 	end
 
-	def initialize_mail(wi)
-		@last_mail = wi.latest_geekmail
+	def initialize_mail
+		@last_mail = $wi.latest_geekmail
 	end
 
 	def save
@@ -214,7 +213,7 @@ class Bot2r1b
 	def scan(verbose = false, only_new = true, rl = nil)
 		rl = @rooms[@roundnum] unless rl
 		for room in rl
-			scan_room($wi, $pl, room, only_new, verbose)
+			scan_room(room, only_new, verbose)
 		end
 	end
 
