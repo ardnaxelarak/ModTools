@@ -63,7 +63,7 @@ if opts[:create]
 	b.new_room
 	puts "Setting up second room..."
 	b.new_room
-	b.initialize_mail($wi)
+	b.initialize_mail
 end
 
 b.new_room if opts[:new_room]

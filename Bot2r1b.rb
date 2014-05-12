@@ -199,7 +199,7 @@ class Bot2r1b
 		rl = @rooms[@roundnum] unless rl
 		for room in rl
 			if force || room.need_tally?
-				if $wi.post(room.thread, room.tally($pl, true))
+				if $wi.post(room.thread, room.tally(true))
 					puts "Updated vote tally of #{room.name}" if verbose
 				else
 					puts "Update of #{room.name} failed!"
@@ -333,6 +333,8 @@ class Bot2r1b
 			room.removed = [] unless room.removed
 			room.to_send = {} unless room.to_send
 			room.weight = {} unless room.weight
+			room.accepted = {} unless room.accepted
+			room.offered_to = {} unless room.offered_to
 		end
 	end
 end

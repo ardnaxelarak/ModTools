@@ -177,6 +177,7 @@ class Interface
 	def in_quote(post)
 		while (post.respond_to?(:parent) && post.parent)
 			post = post.parent
+			next if post.respond_to?(:parent) && post.parent && post.parent.get_attribute(:class) == "spoiler"
 			return true if post.get_attribute(:class) == "quote"
 		end
 		return false

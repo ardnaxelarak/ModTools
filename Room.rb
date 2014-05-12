@@ -93,13 +93,13 @@ class Room
 		return @changes || ((@last_tally < @index) && (@leader == @last_leader))
 	end
 
-	def leader_name(pl)
+	def leader_name
 		return "None" unless @leader
-		return pl[@leader].name
+		return $pl[@leader].name
 	end
 
 	def tally(update = false)
-		text = ""
+		text = "[o]"
 		for pid in @added
 			text << "[b][color=purple]#{$pl[pid].name} has joined the room![/color][/b]\n"
 		end
@@ -107,8 +107,8 @@ class Room
 			text << "[b][color=purple]#{$pl[pid].name} has been removed![/color][/b]\n"
 		end
 		text << "[b][color=purple]#{$pl[@leader].name} has become leader![/color][/b]\n" if @last_leader != @leader
-		text << "\n" unless text == ""
-		text << "[color=#009900]Current Leader: #{leader_name(pl)}"
+		text << "\n" unless text == "" || text == "[o]"
+		text << "[color=#009900]Current Leader: #{leader_name}"
 		text << "\n\nVOTE TALLY:"
 		
 		plist = players.sort_by {|p| count(p) * 1000 - last(p)}
@@ -129,6 +129,7 @@ class Room
 			@added = []
 			@removed = []
 		end
+		text << "[/o]"
 		return text
 	end
 
