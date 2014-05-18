@@ -94,7 +94,7 @@ class Bot2r1b
 		for fromdata in data
 			for todata in data
 				next if fromdata == todata
-				puts "Transfers from #{fromdata[0].name} to #{todata[0].name} (#{fromdata[0].leader_name($pl)}):"
+				puts "Transfers from #{fromdata[0].name} to #{todata[0].name} (#{fromdata[0].leader_name}):"
 				print "- "
 				while (line = gets)
 					line.chomp!

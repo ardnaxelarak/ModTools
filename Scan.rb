@@ -104,25 +104,3 @@ def check_mail(verbose = false)
 		end
 	end
 end
-
-def create_user(username)
-	salt = Digest::SHA512.hexdigest(SecureRandom.hex)
-	$conn.query("INSERT INTO players (username, salt) VALUES (\"#{username}\", \"#{salt}\");")
-	res = $conn.query("SELECT pid FROM players WHERE username = \"#{username}\";")
-	return nil unless res = res.fetch_row
-	return res[0].to_i
-end
-
-def set_password(pid, password)
-	res = $conn.query("SELECT salt FROM players WHERE pid = #{pid};")
-	return false unless salt = res.fetch_row
-	salt = salt[0]
-	password = Digest::SHA512.hexdigest(password)
-	password = password + salt
-	passwordhash = Digest::SHA512.hexdigest(password)
-	$conn.query("UPDATE players SET password=\"#{passwordhash}\" WHERE pid=#{pid};")
-end
-
-def gen_password
-	return SecureRandom.urlsafe_base64
-end

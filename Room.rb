@@ -98,8 +98,9 @@ class Room
 		return $pl[@leader].name
 	end
 
-	def tally(update = false)
-		text = "[o]"
+	def tally(update = false, hidden = false)
+		text = ""
+		text = "[o]" if hidden
 		for pid in @added
 			text << "[b][color=purple]#{$pl[pid].name} has joined the room![/color][/b]\n"
 		end
@@ -129,7 +130,7 @@ class Room
 			@added = []
 			@removed = []
 		end
-		text << "[/o]"
+		text << "[/o]" if hidden
 		return text
 	end
 
