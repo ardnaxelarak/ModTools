@@ -1,13 +1,13 @@
 #!/usr/bin/ruby
 
 require 'trollop'
-require_relative "Bot2r1b"
-require_relative "Setup"
+require_relative 'Bot2r1b'
+require_relative 'Setup'
 
 opts = Trollop::options do
 	banner "Usage:
 	#{__FILE__} [options]\n\nwhere common options are:"
-	opt :file, "File to use", :required => :true, :type => :string, :short => "f"
+	opt :gid, "Game index", :type => :int, :short => "g"
 	opt :create, "Create a new game", :short => "c"
 	opt :next_round, "Initialize next round", :short => "n"
 	opt :quiet, "Quiet mode", :short => "q"
@@ -43,35 +43,37 @@ for vote in opts[:lock_vote]
 	Trollop::die :lock_vote, "needs exactly two players" if vote.length != 2
 end
 
-THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
-
-if (File.exist?(opts[:file]))
-	Trollop::die("file already exists") if (opts[:create_given])
-	b = YAML::load(File.read(opts[:file]))
-	Trollop::die("file does not contain a 2R1B bot") unless b.class == Bot2r1b
-else
-	Trollop::die("file does not exist") unless (opts[:create_given])
-	b = Bot2r1b.new(opts[:file])
-end
+Trollop::die(:create, "may not specify a game index") if opts[:create] && opts[:gid_given]
 
 $wi.verbose = !opts[:quiet]
 
-b.update
-
 if opts[:create]
+	print "Index: "
+	index = gets.chomp
+	print "Name: "
+	name = gets.chomp
+	print "Thread: "
+	thread = gets.chomp
+	b = Bot2r1b.create(index, name, thread)
 	puts "Setting up first room..."
 	b.new_room
 	puts "Setting up second room..."
 	b.new_room
 	b.initialize_mail
+	puts "Created game #{b.gid}"
+else
+	Trollop::die(:gid, "must be specified") unless opts[:gid_given]
+	Trollop::die(:gid, "does not exist") unless row = $conn.query("SELECT t.tid, t.short_name FROM games g LEFT JOIN game_types t ON g.tid = t.tid WHERE g.gid = #{opts[:gid]}").fetch_row
+	Trollop::die(:gid, "refers to a #{row[1]} game") unless row[0].to_i == 1
+	b = Bot2r1b.new(opts[:gid])
 end
 
 b.new_room if opts[:new_room]
 
 b.next_round if opts[:next_round]
-b.auto_next_round("Friday, 16:00", "[b][color=purple]You may not colour reveal or colour share. Only full reveals are allowed.[/color][/b]") if opts[:auto_next_round]
+# b.auto_next_round("Friday, 16:00", "[b][color=purple]You may not colour reveal or colour share. Only full reveals are allowed.[/color][/b]") if opts[:auto_next_round]
 
-Trollop::die "invalid round number" if opts[:round_given] && !b.rooms[opts[:round]]
+Trollop::die "invalid round number" if opts[:round_given] && $conn.query("SELECT rid FROM rooms WHERE gid = #{b.gid} AND round_num = #{opts[:round]}").num_rows == 0
 
 Trollop::die "rooms not recognized" unless rl = b.get_rooms(opts[:rooms])
 Trollop::die(:add, "must select a room") if opts[:add_given] && rl.length == 0
@@ -110,7 +112,8 @@ b.tally(false, rl) if opts[:tally]
 b.tally(true, rl) if opts[:force_tally]
 
 if opts[:show_votes]
-	for room in rl
+	for rid in rl
+		room = Room.new(rid)
 		puts room.tally
 	end
 end
@@ -120,23 +123,21 @@ b.appoint(opts[:appoint]) if opts[:appoint_given]
 b.post(rl) if opts[:post]
 
 if opts[:list_rooms]
-	for room in b.rooms[b.roundnum]
+	for room in b.all_rooms.collect{|rid| Room.new(rid)}
 		puts "#{room.name}: #{room.players.collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")}"
 	end
 end
 
 if opts[:show_orders]
-	for room in b.rooms[b.roundnum]
-		puts "#{room.name}"
-		for player in room.players
-			next unless room.to_send[player] && room.to_send[player].last
-			puts "   #{$pl[player].name}: #{room.to_send[player].last.collect{|pid| $pl[pid].name}.join{", "}}"
-		end
-	end
+	# for room in b.rooms[b.roundnum]
+		# puts "#{room.name}"
+		# for player in room.players
+			# next unless room.to_send[player] && room.to_send[player].last
+			# puts "   #{$pl[player].name}: #{room.to_send[player].last.collect{|pid| $pl[pid].name}.join{", "}}"
+		# end
+	# end
 end
 
 b.print_status if opts[:status]
-
-b.save
 
 close_connections

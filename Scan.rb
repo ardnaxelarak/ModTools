@@ -1,7 +1,7 @@
 require 'digest/sha2'
 require 'securerandom'
-require_relative "Setup"
-require_relative "Room"
+require_relative 'Setup'
+require_relative 'Room'
 
 def scan_actions(list)
 	return if list.length <= 0
@@ -18,7 +18,8 @@ def scan_actions(list)
 	actions
 end
 
-def scan_room(room, only_new = true, verbose = false)
+def scan_room(rid, only_new = true, verbose = false)
+	room = Room.new(rid)
 	if only_new
 		list = $wi.get_posts(room.thread, room.last_article)
 	else
@@ -36,7 +37,7 @@ def scan_room(room, only_new = true, verbose = false)
 				room.revoke_offer(actor)
 			when "mayor"
 				puts "#{$pl[actor].name} has public revealed as mayor" if verbose
-				room.weight[actor] = 2.5
+				room.set_weight(actor, 2.5)
 		end
 
 		next unless action[2]
@@ -58,6 +59,8 @@ def scan_room(room, only_new = true, verbose = false)
 	end
 end
 
+
+# TODO: Fix this
 def scan_transfers(m, verbose = false)
 	list = $wi.mail_since(m.last_mail)
 	return if list.length <= 0

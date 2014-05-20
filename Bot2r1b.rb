@@ -1,31 +1,50 @@
 #!/usr/bin/ruby
 
 require_relative 'Setup'
-require_relative 'Room'
 require_relative 'Scan'
+require_relative 'Room'
 require 'yaml'
 
 class Bot2r1b
 	attr_accessor :roundnum, :filename, :last_mail, :rooms, :index
+	attr_accessor :gid
 
-	def initialize(filename)
-		@roundnum = 0
-		@filename = File.expand_path(filename)
-		@rooms = [[]]
+	def initialize(gid)
+		@gid = gid
+	end
+
+	def self.create(index, name, thread)
+		$conn.query("INSERT INTO games (tid, game_index, name, thread_id) VALUES (1, '#{index}', '#{name}', '#{thread}')")
+		return nil unless row = $conn.query("SELECT max(gid) FROM games WHERE tid = 1 AND game_index = '#{index}'").fetch_row
+		return Bot2r1b.new(row[0].to_i)
 	end
 
 	def initialize_mail
-		@last_mail = $wi.latest_geekmail
-	end
-
-	def save
-		File.write(@filename, YAML::dump(self))
+		# @last_mail = $wi.latest_geekmail
 	end
 
 	def all_players
-		return nil unless @rooms[@roundnum]
-		return nil if @rooms[@roundnum] == []
-		return @rooms[@roundnum].collect{|room| room.players}.flatten.uniq
+		res = $conn.query("SELECT pid FROM current_rooms INNER JOIN room_players ON current_rooms.rid = room_players.rid WHERE current_rooms.gid = #{@gid}")
+		list = []
+		for row in res
+			list.push(row[0].to_i)
+		end
+		return list
+	end
+
+	def all_rooms
+		res = $conn.query("SELECT rid FROM current_rooms WHERE gid = #{@gid}")
+		rl = []
+		for row in res
+			rl.push(row[0].to_i)
+		end
+		return rl
+	end
+
+	def round_num
+		res = $conn.query("SELECT round_num FROM games WHERE games.gid = #{@gid}")
+		return nil unless row = res.fetch_row
+		return row[0].to_i
 	end
 
 	def name_list(pids, verb = false)
@@ -40,11 +59,13 @@ class Bot2r1b
 						room_message = nil)
 		room_message = "%s: No room found\n"
 		return nil unless (pid = $pl.get_player(name, list, verbose, none_message, many_message))
-		for r in @rooms[@roundnum]
-			return [pid, r] if r.contain?(pid)
+		res = $conn.query("SELECT current_rooms.rid FROM current_rooms INNER JOIN room_players ON current_rooms.rid = room_players.rid WHERE gid = #{@gid} AND pid = #{pid}")
+		if row = res.fetch_row
+			return [pid, row[0].to_i]
+		else
+			printf(room_message, $pl[pid].name) if verbose
+			return nil
 		end
-		printf(room_message, $pl[pid].name)
-		return nil
 	end
 
 	def new_room
@@ -65,42 +86,69 @@ class Bot2r1b
 		end
 		print "\b\b"
 		players.uniq!
-		room = Room.new(name, thread, players)
-		@rooms[@roundnum].push(room)
-		puts "#{room.name} created. (#{room.players.collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
+		rid = create_room(name, thread, players)
+		if rid
+			puts "#{name} created. (#{players.collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
+		else
+			puts "Error occurred"
+		end
+	end
+
+	def create_room(name, thread, players, leader = nil)
+		rn = round_num
+		$conn.query("INSERT INTO rooms (gid, thread_id, round_num, name, leader) VALUES (#{@gid}, '#{thread}', #{round_num}, '#{name}', #{leader ? leader : "NULL"})")
+		res = $conn.query("SELECT rid FROM rooms WHERE gid = #{@gid} AND round_num = #{rn} AND thread_id = '#{thread}' AND name = '#{name}'")
+		return nil unless row = res.fetch_row
+		rid = row[0].to_i
+		plist = players.collect{|pid| "(#{rid}, #{pid})"}.join(", ")
+		$conn.query("INSERT INTO room_players (rid, pid) VALUES #{plist}")
+		return rid
 	end
 
 	def next_round
-		newround = @roundnum + 1
-		@rooms[newround] = [] unless @rooms[newround]
-		unless @rooms[newround] == []
-			print "Data already exists for round #{newround + 1}. Overwrite? "
+		curround = round_num
+		newround = curround + 1
+		res = $conn.query("SELECT rid FROM rooms WHERE gid = #{@gid} AND round_num = #{newround}")
+		if res.num_rows > 0
+			print "Data already exists for round #{newround}. Overwrite? "
 			return unless gets.chomp.upcase == "YES"
-			@rooms[newround] = []
+			$conn.query("DELETE FROM rooms WHERE gid = #{@gid} AND round_num = #{newround}")
 		end
 
-		data = []
+		res = $conn.query("SELECT rid, leader, name FROM rooms WHERE rooms.gid = #{@gid} AND round_num = #{curround}")
+		rooms = []
+		for row in res
+			leader = row[1]
+			leader = leader.to_i if leader
+			rooms.push({:rid => row[0].to_i, :leader => leader, :name => row[2], :players => []})
+		end
 
-		for oldroom in @rooms[@roundnum]
-			print "#{oldroom.name} round #{newround + 1} thread: "
+		for room in rooms
+			res = $conn.query("SELECT pid FROM room_players WHERE rid = #{room[:rid]}")
+			for row in res
+				room[:players].push(row[0].to_i)
+			end
+
+			print "#{room[:name]} round #{newround} thread: "
 			thread = gets.chomp
-			data.push([oldroom, thread, oldroom.players])
-			unless oldroom.leader
-				leader = oldroom.choose_leader
-				puts "#{$pl[leader].name} has become leader of #{oldroom.name}!" if leader
+			room[:thread] = thread
+			unless room[:leader]
+				leader = Room.new(room[:rid]).choose_leader
+				room[:leader] = leader
+				puts "#{$pl[leader].name} has become leader of #{room[:name]}!" if leader
 			end
 		end
 
-		for fromdata in data
-			for todata in data
+		for fromdata in rooms
+			for todata in rooms
 				next if fromdata == todata
-				puts "Transfers from #{fromdata[0].name} to #{todata[0].name} (#{fromdata[0].leader_name}):"
+				puts "Transfers from #{fromdata[:name]} to #{todata[:name]}#{fromdata[:leader] ? " (#{$pl[fromdata[:leader]].name})" : ""}"
 				print "- "
 				while (line = gets)
 					line.chomp!
-					if (pid = $pl.get_player(line, fromdata[0].players))
-						fromdata[2] -= [pid]
-						todata[2] += [pid]
+					if (pid = $pl.get_player(line, fromdata[:players]))
+						fromdata[:players] -= [pid]
+						todata[:players] += [pid]
 						puts "Transferred #{$pl[pid].name}"
 					end
 					print "- "
@@ -109,14 +157,14 @@ class Bot2r1b
 			end
 		end
 
-		@roundnum = newround
-		for datum in data
-			room = datum[0].next_round(datum[1], datum[2])
-			@rooms[@roundnum].push(room)
-			puts "#{room.name} created. (#{room.players.collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
+		$conn.query("UPDATE games SET round_num = #{newround} WHERE gid = #{@gid}")
+		for room in rooms
+			rid = create_room(room[:name], room[:thread], room[:players], room[:leader])
+			puts "#{room[:name]} created. (#{room[:players].collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
 		end
 	end
 
+	# TODO: fix this
 	def auto_next_round(new_deadline, additional = nil)
 		newround = @roundnum + 1
 		@rooms[newround] = [] unless @rooms[newround]
@@ -196,8 +244,9 @@ class Bot2r1b
 	end
 
 	def tally(force = false, rl = nil, verbose = true)
-		rl = @rooms[@roundnum] unless rl
-		for room in rl
+		rl = all_rooms unless rl
+		for rid in rl
+			room = Room.new(rid)
 			if force || room.need_tally?
 				if $wi.post(room.thread, room.tally(true))
 					puts "Updated vote tally of #{room.name}" if verbose
@@ -211,33 +260,35 @@ class Bot2r1b
 	end
 
 	def scan(verbose = false, only_new = true, rl = nil)
-		rl = @rooms[@roundnum] unless rl
-		for room in rl
-			scan_room(room, only_new, verbose)
+		rl = all_rooms unless rl
+		for rid in rl
+			scan_room(rid, only_new, verbose)
 		end
 	end
 
 	def transfer(p1, list)
-		return unless (pid_room = get_player_room(p1))
-		(sender, room) = pid_room
-		sent = []
-		for name in list
-			return unless cur = $pl.get_player(name, room.players)
-			sent.push(cur)
-		end
-		room.add_transfer(sender, sent)
+		# return unless (pid_room = get_player_room(p1))
+		# (sender, room) = pid_room
+		# sent = []
+		# for name in list
+			# return unless cur = $pl.get_player(name, room.players)
+			# sent.push(cur)
+		# end
+		# room.add_transfer(sender, sent)
 	end
 
 	def vote(p1, p2, locked = false)
 		return unless (pid_room = get_player_room(p1))
-		(voter, room) = pid_room
+		(voter, rid) = pid_room
+		room = Room.new(rid)
 		return unless (votee = $pl.get_player(p2, room.players))
 		room.vote(voter, votee, locked)
 	end
 
 	def appoint(p1)
 		return unless (pid_room = get_player_room(p1))
-		(pid, room) = pid_room
+		(pid, rid) = pid_room
+		room = Room.new(rid)
 
 		puts "#{$pl[pid]} has been appointed leader of #{room.name}"
 		room.update_leader(pid)
@@ -245,35 +296,43 @@ class Bot2r1b
 
 	def remove(p1)
 		return unless (pid_room = get_player_room(p1))
-		(pid, room) = pid_room
+		(pid, rid) = pid_room
+		room = Room.new(rid)
 		room.remove_player(pid)
 	end
 
 	def add_player(p1, r1)
 		return unless (pid = $pl.get_player(p1))
-		return if @rooms[@roundnum].collect{|r| r.players}.flatten.include?(pid)
-		r1.add_player(pid)
+		# return if @rooms[@roundnum].collect{|r| r.players}.flatten.include?(pid)
+		room = Room.new(r1)
+		room.add_player(pid)
 	end
 
 	def lock(p1)
 		return unless (pid_room = get_player_room(p1))
-		(pid, room) = pid_room
+		(pid, rid) = pid_room
+		room = Room.new(rid)
 		room.lock(pid)
 	end
 
 	def unlock(p1)
 		return unless (pid_room = get_player_room(p1))
-		(pid, room) = pid_room
+		(pid, rid) = pid_room
+		room = Room.new(rid)
 		room.unlock(pid)
 	end
 
 	def get_rooms(names)
-		return @rooms[@roundnum] if (names.nil? || names.length == 0)
+		return all_rooms if (names.nil? || names.length == 0)
 		input = names.collect{|name| name.upcase}
-		for bad in names.select{|name| !@rooms[@roundnum].collect{|room| room.name.upcase}.include?(name.upcase)}
-			puts "Unrecongnized: #{bad}"
+		rl = []
+		for name in names
+			res = $conn.query("SELECT rid FROM current_rooms WHERE gid = #{@gid} AND name LIKE '#{name}'")
+			puts "Unrecognized: #{name}" if res.num_rows == 0
+			for row in res
+				rl.push(row[0].to_i)
+			end
 		end
-		rl = @rooms[@roundnum].select{|room| input.include?(room.name.upcase)}
 		if rl.length <= 0
 			puts "No rooms selected"
 			return nil
@@ -283,8 +342,9 @@ class Bot2r1b
 	end
 
 	def post(rl = nil)
-		rl = @rooms[@roundnum] unless rl
-		puts "Type a message to post to the following rooms: #{rl.collect{|room| room.name}.join(", ")}."
+		rl = all_rooms unless rl
+		rooms = rl.collect{|rid| Room.new(rid)}
+		puts "Type a message to post to the following rooms: #{rooms.collect{|room| room.name}.join(", ")}."
 
 		text = ""
 		while (line = gets)
@@ -308,33 +368,21 @@ class Bot2r1b
 		else
 			return
 		end
-		for room in rl
+		for room in rl.collect{|rid| Room.new(rid)}
 			$wi.post(room.thread, text)
 		end
 	end
 
 	def change_round(num)
-		@rooms[num] = [] unless @rooms[num]
-		@roundnum = num - 1
+		$conn.query("UPDATE games SET round_num = #{num} WHERE gid = #{@gid}")
 	end
 
 	def print_status
-		puts "Round #{@roundnum + 1}"
-		for room in @rooms[@roundnum]
-			puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader ? $pl[room.leader].name : "No leader"} (#{room.get_transfer ? room.get_transfer.collect{|pid| $pl[pid].name}.join(", ") : "none"})"
-		end
-	end
-
-	def update
-		for room in @rooms.flatten
-			next unless room
-			room.locked = [] unless room.locked
-			room.added = [] unless room.added
-			room.removed = [] unless room.removed
-			room.to_send = {} unless room.to_send
-			room.weight = {} unless room.weight
-			room.accepted = {} unless room.accepted
-			room.offered_to = {} unless room.offered_to
+		puts "Round #{round_num}"
+		for rid in all_rooms
+			room = Room.new(rid)
+			puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader_name}"
+			# puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.get_leader_name} (#{room.get_transfer ? room.get_transfer.collect{|pid| $pl[pid].name}.join(", ") : "none"})"
 		end
 	end
 end

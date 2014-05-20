@@ -7,40 +7,25 @@ require 'yaml'
 
 $wi.verbose = false
 
+END_LINE = "------------------"
+
 puts Time.now.strftime("%d/%m/%Y %H:%M")
 
-THIS_FILE = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
-END_LINE = "--------------------"
-
-actname = File.expand_path("../active_games", THIS_FILE)
-unless File.exist?(actname)
-	puts "active_games not found"
-	puts END_LINE
-	exit
-end
-list = File.read(actname).split("\n").uniq
-if list.length == 0
-	puts "no active games"
-	puts END_LINE
-	exit
-end
+res = $conn.query("SELECT gid, g.tid, t.short_name, game_index, g.name FROM games g LEFT JOIN statuses s ON g.status = s.sid LEFT JOIN game_types t ON g.tid = t.tid WHERE s.scan")
 
 begin
 	check_mail(true)
-	for filename in list
-		puts "Opening #{filename}"
-		if (File.exist?(filename))
-			b = YAML::load(File.read(filename))
-		else
-			next
-		end
+	for row in res
+		(gid, tid, tsn, gind, name) = row
+		gid = gid.to_i
+		tid = tid.to_i
+		puts "Opening #{tsn} ##{gind}: #{name}"
 
-		if (b.class == Bot2r1b)
-			b.update
+		if (tid == 1)
+			b = Bot2r1b.new(row[0].to_i)
 			b.scan(true)
 			b.tally(false, nil, false)
 			# scan_transfers(b, true)
-			b.save
 		end
 	end
 ensure

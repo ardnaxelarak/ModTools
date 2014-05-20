@@ -3,215 +3,186 @@ require_relative "Vote"
 require_relative "Setup"
 
 class Room
-	attr_accessor :players, :name, :thread, :last_tally, :leader, :locked, :last_article, :to_send, :added, :removed, :offered_to, :accepted, :weight
+	attr_accessor :rid, :name, :thread
+	def initialize(rid)
+		@rid = rid
+		res = $conn.query("SELECT name, thread_id FROM rooms WHERE rid = #{@rid}")
+		return unless row = res.fetch_row
+		(@name, @thread) = row
+	end
 
-	def initialize(name, thread, players, leader = nil)
-		@name = name
-		@thread = thread
-		@players = players
-		@votes_for = {}
-		@votes_from = {}
-		@to_send = {}
-		@offered_to = {}
-		@accepted = {}
-		@weight = {}
-		@index = 0
-		@last_tally = 0
-		@leader = leader
-		@last_leader = leader
-		@changes = false
-		@added = []
-		@removed = []
-		@locked = []
-		@last_article = nil
-		for player in @players
-			@votes_for[player] = []
-			@votes_from[player] = []
-			@to_send[player] = []
-			@weight[player] = 1
+	def players
+		pl = []
+		res = $conn.query("SELECT pid FROM room_players WHERE rid = #{@rid}")
+		for row in res
+			pl.push(row[0].to_i)
 		end
+		return pl
 	end
 
 	def offer_player(pid1, pid2)
-		@offered_to[pid1] = pid2 unless @accepted[pid1]
+		# @offered_to[pid1] = pid2 unless @accepted[pid1]
+	end
+
+	def set_weight(pid, weight)
+		$conn.query("UPDATE room_players SET weight = #{weight} WHERE rid = #{@rid} AND pid = #{pid}")
+	end
+
+	def last_article
+		return nil unless row = $conn.query("SELECT last_scanned FROM rooms WHERE rid = #{@rid}").fetch_row
+		return row[0]
+	end
+
+	def last_article=(value)
+		$conn.query("UPDATE rooms SET last_scanned = #{value} WHERE rid = #{@rid}")
 	end
 
 	def accept_offer(pid2, pid1)
-		return nil unless @offered_to[pid1] == pid2
-		@offered_to[pid1] = nil
-		if @leader == pid1
-			update_leader(pid2)
-		else
-			@accepted[pid1] = pid2
-		end
-		return true
+		# return nil unless @offered_to[pid1] == pid2
+		# @offered_to[pid1] = nil
+		# if @leader == pid1
+		#	update_leader(pid2)
+		# else
+		#	@accepted[pid1] = pid2
+		# end
+		# return true
 	end
 
 	def revoke_offer(pid1)
-		@offered_to[pid1] = nil
-		@accepted[pid1] = nil
+		# @offered_to[pid1] = nil
+		# @accepted[pid1] = nil
 	end
 
 	def total_votes
-		@weight.collect!{|item| item ? item : 1}
-		return @players.collect{|pid| @weight[pid]}.reduce(0, :+)
+		res = $conn.query("SELECT total FROM total_votes WHERE rid = #{@rid}")
+		return nil unless row = res.fetch_row
+		return nil unless row[0]
+		return row[0].to_f
 	end
 
 	def clear_votes
-		for player in @players
-			@votes_for[player] = []
-			@votes_from[player] = []
-		end
-		@index = 0
-	end
-
-	def next_round(thread, players = @players)
-		return Room.new(@name, thread, players, leader)
+		$conn.query("DELETE FROM room_votes WHERE rid = #{@rid}")
 	end
 
 	def add_player(pid)
-		return if @players.include?(pid)
-		@players.push(pid)
-		@votes_for[pid] = []
-		@votes_from[pid] = []
-		@added.push(pid)
-		@changes = true
+		return if contain?(pid)
+		$conn.query("INSERT INTO room_players (rid, pid) VALUES (#{@rid}, #{pid})")
+		$conn.query("INSERT INTO room_messages (rid, message) VALUES (#{@rid}, '#{$pl[pid].name} has joined the room.')")
+		$conn.query("UPDATE rooms SET modified = 1 WHERE rid = #{@rid}")
 	end
 
 	def remove_player(pid)
-		@players -= [pid]
-		@removed.push(pid)
-		@changes = true
+		return unless contain?(pid)
+		$conn.query("DELETE FROM room_players WHERE rid = #{@rid} AND pid = #{pid}")
+		$conn.query("INSERT INTO room_messages (rid, message) VALUES (#{@rid}, '#{$pl[pid].name} has left the room.')")
+		$conn.query("UPDATE rooms SET modified = 1 WHERE rid = #{@rid}")
 		recalc
 	end
 
-	def contain?(player)
-		@players.include?(player)
+	def contain?(pid)
+		res = $conn.query("SELECT pid FROM room_players WHERE pid = #{pid} AND rid = #{@rid}")
+		return res.num_rows > 0
 	end
 
 	def need_tally?
-		return @changes || ((@last_tally < @index) && (@leader == @last_leader))
+		res = $conn.query("SELECT modified FROM rooms WHERE rid = #{@rid}")
+		return false unless row = res.fetch_row
+		return row[0].to_i > 0
 	end
 
 	def leader_name
-		return "None" unless @leader
-		return $pl[@leader].name
+		res = $conn.query("SELECT leader FROM rooms WHERE rid = #{@rid}")
+		return "None" unless row = res.fetch_row
+		return "None" unless row[0]
+		return $pl[row[0].to_i].name
 	end
 
 	def tally(update = false, hidden = false)
 		text = ""
 		text = "[o]" if hidden
-		for pid in @added
-			text << "[b][color=purple]#{$pl[pid].name} has joined the room![/color][/b]\n"
+		res = $conn.query("SELECT message FROM room_messages WHERE rid = #{@rid} ORDER BY mid")
+		if res.num_rows > 0
+			text << "[b][color=purple]"
+			for row in res
+				text << "#{row[0]}\n"
+			end
+			text << "[/b][/color]\n"
 		end
-		for pid in @removed
-			text << "[b][color=purple]#{$pl[pid].name} has been removed![/color][/b]\n"
-		end
-		text << "[b][color=purple]#{$pl[@leader].name} has become leader![/color][/b]\n" if @last_leader != @leader
-		text << "\n" unless text == "" || text == "[o]"
 		text << "[color=#009900]Current Leader: #{leader_name}"
 		text << "\n\nVOTE TALLY:"
 		
-		plist = players.sort_by {|p| count(p) * 1000 - last(p)}
-		for p in plist.reverse
-			next if @votes_for[p].length == 0
-			text << "\n#{$pl[p].name} - #{count(p)} - #{@votes_for[p].collect {|vote| vote_desc(vote)}.join(", ")}"
+		res = $conn.query("SELECT pid, votes FROM vote_tally WHERE rid = #{@rid} ORDER BY votes DESC, last, last_old")
+		for row in res
+			pid = row[0].to_i
+			vs = $conn.query("SELECT VoteString(#{@rid}, #{pid})")
+			next unless vs = vs.fetch_row
+			text << "\n#{vs[0]}"
 		end
 
-		nv = players.select{|p| @votes_from[p].length == 0}.sort_by{|p| $pl[p].name.upcase}.collect{|p| $pl[p].name}
+		nv = []
+		res = $conn.query("SELECT pid FROM not_voted WHERE rid = #{@rid}")
+		for row in res
+			nv.push(row[0].to_i)
+		end
+		nv = nv.collect{|pid| $pl[pid].name}.sort_by{|name| name.upcase}
 		text << "\n\nNot voting: #{nv.join(", ")}" if nv.length > 0
 		text << "\n\n'*' indicates a locked vote."
 
 		text << "[/color]"
 		if update
-			@last_tally = @index
-			@last_leader = @leader
-			@changes = false
-			@added = []
-			@removed = []
+			$conn.query("UPDATE rooms SET modified = FALSE WHERE rid = #{@rid}")
+			$conn.query("DELETE FROM room_messages WHERE rid = #{@rid}")
 		end
 		text << "[/o]" if hidden
 		return text
 	end
 
 	def choose_leader
-		plist = players.sort_by {|p| count(p) * 1000 - last(p)}.reverse
-		update_leader(plist.first)
-		@leader
-	end
-
-	def count(votee)
-		count = 0
-		for vote in @votes_for[votee]
-			@weight[vote.voter] = 1 unless @weight[vote.voter]
-			count += @weight[vote.voter] if current_vote?(vote)
-		end
-		return count
-	end
-
-	def last(votee)
-		for vote in @votes_for[votee].reverse
-			return vote.order if current_vote?(vote)
-		end
-		return -1
+		res = $conn.query("SELECT pid FROM vote_tally WHERE rid = #{@rid} ORDER BY votes DESC, last LIMIT 1")
+		return nil unless row = res.fetch_row
+		update_leader(row[0].to_i)
+		return row[0].to_i
 	end
 
 	def vote(voter, votee, locked = false)
-		v = Vote.new(votee, voter, @index)
-		@votes_from[voter].push(v)
-		@votes_for[votee].push(v)
-		@index = @index + 1
-		@locked[voter] = locked
+		$conn.query("INSERT INTO room_votes (rid, voter, votee, locked) VALUES (#{@rid}, #{voter}, #{votee}, #{locked ? "1" : "0"})")
 		recalc
 	end
 
 	def recalc
-		for votee in @players
-			update_leader(votee) if count(votee) > (players.length / 2)
-		end
+		res = $conn.query("SELECT v.pid, r.leader FROM vote_tally v JOIN rooms r ON v.rid = r.rid WHERE v.rid = #{@rid} AND votes > (SELECT count(*) FROM room_players rp WHERE rp.rid = #{@rid}) / 2 ORDER BY votes DESC, last")
+		return unless row = res.fetch_row
+		oldleader = row[1]
+		oldleader = oldleader.to_i if oldleader
+		leader = row[0].to_i
+		
+		update_leader(leader) unless leader == oldleader
 	end
 
 	def add_transfer(sender, sent)
-		@to_send[sender] = [] unless @to_send[sender]
-		@to_send[sender].push(sent)
+		# @to_send[sender] = [] unless @to_send[sender]
+		# @to_send[sender].push(sent)
 	end
 
 	def get_transfer
-		return nil unless @leader
-		return nil unless @to_send[@leader]
-		return @to_send[@leader].last
+		# return nil unless @leader
+		# return nil unless @to_send[@leader]
+		# return @to_send[@leader].last
 	end
 
 	def update_leader(newleader)
-		@leader = newleader
-		@leader = @accepted[newleader] if @accepted[newleader]
-		@changes = true
+		$conn.query("UPDATE rooms SET leader = #{newleader}, modified = TRUE WHERE rid = #{@rid}")
+		$conn.query("INSERT INTO room_messages (rid, message) VALUES (#{@rid}, '#{$pl[newleader].name} has become leader!')")
+		# @leader = @accepted[newleader] if @accepted[newleader]
 	end
 
 	def lock(votee)
-		@locked[votee] = true
-		@changes = true
+		# @locked[votee] = true
+		# @changes = true
 	end
 
 	def unlock(votee)
-		@locked[votee] = false
-		@changes = true
-	end
-
-	def current_vote?(vote)
-		return (vote == @votes_from[vote.voter].last) && @players.include?(vote.voter)
-	end
-
-	def locked_vote?(vote)
-		return false unless current_vote?(vote)
-		return @locked[vote.voter]
-	end
-
-	def vote_desc(vote, old_prefix = "[-]", old_suffix = "[/-]", locked_ind = "*")
-		text = $pl[vote.voter].name
-		text += locked_ind if locked_vote?(vote)
-		text += "(#{vote.order + 1})"
-		text = old_prefix + text + old_suffix unless current_vote?(vote) 
-		return text
+		# @locked[votee] = false
+		# @changes = true
 	end
 end
