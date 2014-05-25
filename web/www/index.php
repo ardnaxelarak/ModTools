@@ -67,7 +67,7 @@ sec_session_start();
 			echo "<td>$type_short</td>";
 			echo "<td><a href='" . ROOT . "/game/$gid'>#$game_index: $game_name</a></td>";
 			echo "<td>" . join(", ", $mods) . "</td>";
-			echo "<td align='center'>$current_players / $max_players</td>";
+			echo "<td align='center'>$current_players" . (is_null($max_players) ? "" : " / $max_players") . "</td>";
 			echo "</tr>";
 		}
 		$ms->close();

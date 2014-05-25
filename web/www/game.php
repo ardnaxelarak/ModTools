@@ -63,7 +63,7 @@ include_once '../include/game.inc.php';
 			$stmt->store_result();
 			$stmt->bind_result($pid, $pname); ?>
 			<td><table width='100%' class='forum_table' cellpadding='2'>
-			<tr><th>Players (<?php echo $stmt->num_rows() . "/" . $max_players ?>)</th></tr>
+			<tr><th>Players (<?php echo $stmt->num_rows() . (is_null($max_players) ? "" : " / " . $max_players) ?>)</th></tr>
 	<?php
 			while ($stmt->fetch())
 			{
