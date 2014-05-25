@@ -1,3 +1,5 @@
 <?php
-echo hash('sha512', uniqid(openssl_random_pseudo_bytes(16), TRUE));
+include_once '../include/db_connect.php';
+
+echo $mysqli->query("SELECT count(*) FROM players");
 ?>

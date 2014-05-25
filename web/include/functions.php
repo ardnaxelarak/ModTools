@@ -1,6 +1,9 @@
 <?php
 include_once 'psl-config.php';
 
+ini_set('display_errors', 'On');
+error_reporting(-1);
+
 function sec_session_start()
 {
 	$session_name = 'sec_session_id';   // Set a custom session name
@@ -29,67 +32,83 @@ function sec_session_start()
 function login($username, $password, $mysqli)
 {
 	// Using prepared statements means that SQL injection is not possible. 
-	if ($stmt = $mysqli->prepare("SELECT pid, username, password, salt 
-		FROM players WHERE username = ? LIMIT 1"))
+	if (!($stmt = $mysqli->prepare("SELECT pid, username, password, salt FROM players WHERE username = ? LIMIT 1")))
+		return -3; // No user exists.
+	$stmt->bind_param('s', $username);
+	$stmt->execute();
+	$stmt->store_result();
+	$stmt->bind_result($user_id, $username, $db_password, $salt);
+	$stmt->fetch();
+	$num = $stmt->num_rows();
+	$stmt->close();
+
+	if ($num < 1)
+		return -4;
+
+	$password = hash('sha512', $password);
+	$password = hash('sha512', $password . $salt);
+
+	if (checkbrute($user_id, $mysqli))
 	{
-		$stmt->bind_param('s', $username);
-		$stmt->execute();
-		$stmt->store_result();
-		$stmt->bind_result($user_id, $username, $db_password, $salt);
-		$stmt->fetch();
- 
-		$password = hash('sha512', $password . $salt);
-		if ($stmt->num_rows == 1)
+		// Account is locked 
+		// Send an email to user saying their account is locked
+		return -1;
+	}
+
+	if ($db_password == $password)
+	{
+		// Password is correct!
+		// XSS protection as we might print this value
+		$user_id = preg_replace("/[^0-9]+/", "", $user_id);
+		$_SESSION['user_id'] = $user_id;
+		// XSS protection as we might print this value
+		$username = preg_replace("/[^a-zA-Z0-9_\-]+/", "", $username);
+		$_SESSION['username'] = $username;
+		$_SESSION['salt'] = $salt;
+		// Login successful.
+		return 1;
+	}
+
+	// Password is not correct
+	// Check for temporary passwords less than a day old
+	if (!($stmt = $mysqli->prepare("SELECT temp_id, pass FROM temppass WHERE pid = ? AND TIME_TO_SEC(TIMEDIFF(NOW(), time)) < 86400")))
+		return -3;
+	$stmt->bind_param('i', $user_id);
+	$stmt->execute();
+	$stmt->store_result();
+	$stmt->bind_result($temp_id, $db_temp);
+
+	while ($stmt->fetch())
+	{
+		if ($db_temp == $password)
 		{
-			if (checkbrute($user_id, $mysqli))
-			{
-				// Account is locked 
-				// Send an email to user saying their account is locked
-				return false;
-			}
-			else
-			{
-				if ($db_password == $password)
-				{
-					// Password is correct!
-					// Get the user-agent string of the user.
-					$user_browser = $_SERVER['HTTP_USER_AGENT'];
-					// XSS protection as we might print this value
-					$user_id = preg_replace("/[^0-9]+/", "", $user_id);
-					$_SESSION['user_id'] = $user_id;
-					// XSS protection as we might print this value
-					$username = preg_replace("/[^a-zA-Z0-9_\-]+/", "", $username);
-					$_SESSION['username'] = $username;
-					$_SESSION['login_string'] = hash('sha512', $password . $user_browser);
-					// Login successful.
-					return true;
-				}
-				else
-				{
-					// Password is not correct
-					// We record this attempt in the database
-					$now = time();
-					$mysqli->query("INSERT INTO login_attempts(user_id, time) VALUES ('$user_id', '$now')");
-					return false;
-				}
-			}
-		}
-		else
-		{
-			// No user exists.
-			return false;
+			$user_id = preg_replace("/[^0-9]+/", "", $user_id);
+			$_SESSION['user_id'] = $user_id;
+			$username = preg_replace("/[^a-zA-Z0-9_\-]+/", "", $username);
+			$_SESSION['username'] = $username;
+			$_SESSION['temp'] = true;
+			$_SESSION['salt'] = $salt;
+
+			// remove temp password
+			$mysqli->query("DELETE FROM temppass WHERE temp_id = $temp_id");
+
+			// Login with temp successful; prompt to change password
+			$stmt->close();
+			return 2;
 		}
 	}
+	$stmt->close();
+
+	// Password is incorrect
+	// We record this attempt in the database
+	$mysqli->query("INSERT INTO login_attempts(user_id, time) VALUES ('$user_id', NOW())");
+	return -2;
 }
 
 function checkbrute($user_id, $mysqli)
 {
-	$now = time();
- 
 	// All login attempts are counted from the past 2 hours. 
-	$valid_attempts = $now - (2 * 60 * 60);
- 
-	if ($stmt = $mysqli->prepare("SELECT time FROM login_attempts WHERE user_id = ? AND time > '$valid_attempts'"))
+	if ($stmt = $mysqli->prepare("SELECT time FROM login_attempts WHERE user_id = ? AND TIME_TO_SEC(TIMEDIFF(NOW(), time)) < 7200"))
 	{
 		$stmt->bind_param('i', $user_id);
 		$stmt->execute();
@@ -105,35 +124,17 @@ function checkbrute($user_id, $mysqli)
 function login_check($mysqli)
 {
 	// Check if all session variables are set 
-	if (!isset($_SESSION['user_id'], $_SESSION['username'], $_SESSION['login_string']))
-		return false;
+	return (isset($_SESSION['user_id'], $_SESSION['username']));
+}
 
-	$user_id = $_SESSION['user_id'];
-	$login_string = $_SESSION['login_string'];
-	$username = $_SESSION['username'];
+function game_link($gid)
+{
+	return ROOT . "/game/$gid";
+}
 
-	// Get the user-agent string of the user.
-	$user_browser = $_SERVER['HTTP_USER_AGENT'];
-
-	if (!($stmt = $mysqli->prepare("SELECT password FROM players WHERE pid = ? LIMIT 1")))
-		return false;
-
-	$stmt->bind_param('i', $user_id);
-	$stmt->execute();   // Execute the prepared query.
-	$stmt->store_result();
-
-	if ($stmt->num_rows != 1)
-		return false;
-
-	// If the user exists get variables from result.
-	$stmt->bind_result($password);
-	$stmt->fetch();
-	$login_check = hash('sha512', $password . $user_browser);
-
-	if ($login_check == $login_string)
-		return true;
-	else
-		return false;
+function username_link($uname)
+{
+	return "<a href='" . ROOT . "/user/$uname'>$uname</a>";
 }
 
 function esc_url($url)

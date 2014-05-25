@@ -1,13 +1,23 @@
 <?php
+include_once '../include/db_connect.php';
+include_once '../include/functions.php';
 include_once '../include/header.php';
-include_once '../include/profile.inc.php';
-
+ 
+sec_session_start();
+ 
+if (!isset($_SESSION['user_id'], $_SESSION['temp']))
+{
+	header('Location: ../error.php');
+}
+else
+{
 ?>
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Edit Profile | ModKiwi</title>
+		<title>Password Change | ModKiwi</title>
 		<link rel="stylesheet" href="styles/main.css" />
+		<script type="text/JavaScript" src="js/forms.js"></script> 
 		<script type="text/JavaScript">
 function validate_pass(form, password, conf)
 {
@@ -33,12 +43,11 @@ function validate_pass(form, password, conf)
 </script>
 	</head>
 	<body>
-		<?php print_header($mysqli) ?>
 		<center>
-		<?php echo $message ?>
-		<form action="<?php echo esc_url($_SERVER['PHP_SELF']); ?>" method="post" name="change_form">					  
+		<h1>Change Password</h1>
+		You have logged in using a temporary password. Please enter a new password.<br>Passwords must be at least six characters long.
+		<form action="process_change.php" method="post" name="change_form">					  
 			<table border='0'>
-				<tr><td>Old Password:</td><td><input type="password" name="oldpwd" id="oldpwd"/></td></tr>
 				<tr><td>New Password:</td><td><input type="password" name="password" id="password"/></td></tr>
 				<tr><td>Confirm password:</td><td><input type="password" name="confirmpwd" id="confirmpwd" /></td></tr>
 				<tr><td colspan='2' align='center'><input type="submit" value="Change" onclick="return validate_pass(this.form, this.form.password, this.form.confirmpwd);" /> </td></tr>
@@ -47,3 +56,4 @@ function validate_pass(form, password, conf)
 		</center>
 	</body>
 </html>
+<?php } ?>

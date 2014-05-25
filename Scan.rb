@@ -102,7 +102,7 @@ def check_mail(verbose = false)
 				pid = res.fetch_row[0].to_i
 			end
 			pass = gen_password
-			set_password(pid, pass)
+			temp_password(pid, pass)
 			$wi.send_geekmail(item[:from], "Modkiwi password reset", "Your password has been reset to \"#{pass}\".")
 		end
 	end

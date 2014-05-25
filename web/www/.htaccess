@@ -1,4 +1,13 @@
 Options +FollowSymLinks
 RewriteEngine on
-RewriteRule users/(.*)/ users.php?username=$1
-RewriteRule users/(.*) users.php?username=$1
+RewriteRule ^user/(.*)/ user.php?username=$1
+RewriteRule ^user/(.*) user.php?username=$1
+RewriteRule ^game/([0-9]*)/next next_round.php?gid=$1
+RewriteRule ^game/([0-9]*)/end end_game.php?gid=$1
+RewriteRule ^game/([0-9]*)$ game.php?gid=$1
+RewriteRule ^game/([0-9]*)/$ game.php?gid=$1
+RewriteRule ^login_error$ login.php?error=1
+RewriteRule ^login$ login.php
+RewriteRule ^profile$ profile.php
+RewriteRule ^index$ index.php
+RewriteRule ^logout$ logout.php

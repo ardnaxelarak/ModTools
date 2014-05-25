@@ -146,6 +146,7 @@ class Room
 
 	def vote(voter, votee, locked = false)
 		$conn.query("INSERT INTO room_votes (rid, voter, votee, locked) VALUES (#{@rid}, #{voter}, #{votee}, #{locked ? "1" : "0"})")
+		$conn.query("UPDATE rooms SET modified = TRUE WHERE rid = #{@rid}")
 		recalc
 	end
 

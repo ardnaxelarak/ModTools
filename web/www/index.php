@@ -5,43 +5,75 @@ include_once '../include/header.php';
  
 sec_session_start();
  
-$logged = login_check($mysqli);
 ?>
 <!DOCTYPE html>
 <html>
-	<?php if (!$logged) { ?>
 	<head>
-		<title>ModKiwi Login Page</title>
-		<link rel="stylesheet" href="styles/main.css" />
-		<script type="text/JavaScript" src="js/sha512.js"></script> 
-		<script type="text/JavaScript" src="js/forms.js"></script> 
+		<meta charset="UTF-8">
+		<title>Modkiwi</title>
+		<link rel="stylesheet" href="bgg.css" />
 	</head>
 	<body>
+		<?php print_header($mysqli); ?>
 		<center>
-		<h1>Login Required</h1>
-		<?php
-		if (isset($_GET['error'])) {
-			echo '<p class="error">Error Logging In!</p>';
+			<table><tr>
+			<td valign='top'><table width='100%' class='forum_table' cellpadding='2'>
+				<tr><th colspan='3'>In Progress</th></tr>
+<?php
+		$stmt = $mysqli->prepare("SELECT gid, type_long, type_short, game_index, game_name FROM game_view WHERE sid = 3");
+		$stmt->execute();
+		$stmt->store_result();
+		$stmt->bind_result($gid, $type_long, $type_short, $game_index, $game_name);
+		while ($stmt->fetch())
+		{
+			echo "<tr><td>$gid</td><td>$type_short</td><td><a href='" . ROOT . "/game/$gid'>#$game_index: $game_name</a></td></tr>";
 		}
-		?> 
-		<form action="process_login.php" method="post" name="login_form">					  
-		<table border='0'>
-		<tr><td>Username:</td><td><input type='text' name="username" /></td></tr>
-		<tr><td>Password:</td><td><input type='password' name='password' id="password" /></td></tr>
-		<tr><td colspan='2' align='center'><input type='submit' value='Login' onclick="formhash(this.form, this.form.password);" /></td></tr>
-		</table>
-		</form>
-		<p>To reset your password or create an account, please <a href=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=reset%20password>geekmail modkiwi</a> with "reset password" in the subject line.</p>
+		$stmt->close(); ?>
+			</table><br>
+			<table width='100%' class='forum_table' cellpadding='2'>
+				<tr><th colspan='3'>Recently Ended</th></tr>
+<?php
+		$stmt = $mysqli->prepare("SELECT gid, type_long, type_short, game_index, game_name FROM game_view WHERE sid IN (4, 5) ORDER BY gid DESC LIMIT 10");
+		$stmt->execute();
+		$stmt->store_result();
+		$stmt->bind_result($gid, $type_long, $type_short, $game_index, $game_name);
+		while ($stmt->fetch())
+		{
+			echo "<tr><td>$gid</td><td>$type_short</td><td><a href='" . ROOT . "/game/$gid'>#$game_index: $game_name</a></td></tr>";
+		}
+		$stmt->close(); ?>
+			</table></td>
+
+			<td valign='top'><table width='100%' class='forum_table' cellpadding='2'>
+				<tr><th colspan='3'>In Signups</th>
+				<th>Moderator(s)</th>
+				<th>Players</th></tr>
+<?php
+		$ms = $mysqli->prepare("SELECT p.username FROM moderators m JOIN players p ON m.pid = p.pid WHERE m.gid = ?");
+		$ms->bind_param('i', $gid);
+		$stmt = $mysqli->prepare("SELECT g.gid, type_long, type_short, game_index, game_name, max_players, count(DISTINCT p.pid) FROM game_view g LEFT JOIN game_players p ON g.gid = p.gid WHERE signup GROUP BY g.gid");
+		$stmt->execute();
+		$stmt->store_result();
+		$stmt->bind_result($gid, $type_long, $type_short, $game_index, $game_name, $max_players, $current_players);
+		while ($stmt->fetch())
+		{
+			$mods = [];
+			$ms->execute();
+			$ms->bind_result($mod_name);
+			while ($ms->fetch())
+				$mods[] = username_link($mod_name);
+			echo "<tr>";
+			echo "<td>$gid</td>";
+			echo "<td>$type_short</td>";
+			echo "<td><a href='" . ROOT . "/game/$gid'>#$game_index: $game_name</a></td>";
+			echo "<td>" . join(", ", $mods) . "</td>";
+			echo "<td align='center'>$current_players / $max_players</td>";
+			echo "</tr>";
+		}
+		$ms->close();
+		$stmt->close(); ?>
+			</table></td>
+			</tr></table>
 		</center>
 	</body>
-	<?php } else { ?>
-	<head>
-		<title>Modkiwi</title>
-	</head>
-	<?php
-		$username = htmlentities($_SESSION['username']);
-		$user_id = htmlentities($_SESSION['user_id']);
-		print_header($username); ?>
-	This page is pretty boring right now.
-	<?php } ?>
 </html>
