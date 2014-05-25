@@ -103,7 +103,7 @@ def check_mail(verbose = false)
 			end
 			pass = gen_password
 			temp_password(pid, pass)
-			$wi.send_geekmail(item[:from], "Modkiwi password reset", "Your password has been reset to \"#{pass}\".")
+			$wi.send_geekmail(item[:from], "Modkiwi password reset", "You may use the following temporary password to log in to ModKiwi:\n\nUsername: #{item[:from]}\nPassword: #{pass}\n\nYou will be prompted to change your password when you log in. Temporary passwords expire after use or after 24 hours. Passwords should be at least six characters in length. Passwords may not be transmitted securely, so do not use a password that you use for anything else.")
 		end
 	end
 end
