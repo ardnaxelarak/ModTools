@@ -77,6 +77,27 @@ else
 if (!is_null($action) && !$logged) {
 	$message .= "<p>You must be logged in to perform that action.</p>";
 	$action = null;
+} else if ($action == "modify") {
+	if ($moderator) {
+		$ps = $mysqli->prepare("SELECT rp.pid, p.username, r.rid, r.name FROM room_players rp JOIN current_rooms r ON rp.rid = r.rid JOIN players p ON rp.pid = p.pid WHERE r.gid = ?");
+		$ps->bind_param('i', $gid);
+		$ps->execute();
+		$ps->store_result();
+		$ps->bind_result($pid, $pname, $rid, $roomname);
+		while ($ps->fetch()) {
+			if (!isset($_POST["pid_$pid"]))
+				continue;
+			$action = $_POST["pid_$pid"];
+			if ($action == "appoint") {
+				$mysqli->query("UPDATE rooms SET leader = $pid, modified = TRUE WHERE rid = $rid");
+				$mysqli->query("INSERT INTO room_messages (rid, message) VALUES ($rid, '$pname has become leader!')");
+				$message .= "<p>$pname has been appointed leader of $roomname</p>";
+			}
+		}
+		$ps->close();
+	} else {
+		$message .= "<p>You do not have permission to take that action.</p>";
+	}
 } else if ($action == "next-round" || $action == "end-2r1b") {
 	if ($moderator)
 	{
@@ -233,7 +254,8 @@ if (!is_null($gid) && $show_rooms) {
 				if ($rid != $rid2)
 					$text .= "<option value='move_$rid2'>Send to $room_name2</option>";
 			}
-			$text .= "<option value='remove'>Remove from game</option>";
+			$text .= "<option value='remove'>Remove from Game</option>";
+			$text .= "<option value='appoint'>Appoint Leader</option>";
 			$options[$rid] = $text;
 		}
 	}

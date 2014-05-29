@@ -74,7 +74,6 @@ include_once '../include/game.inc.php';
 		} ?>
 		</tr></table>
 <?php	if ($moderator) { ?>
-		<input type='hidden' name='gid' value='<?php echo $gid ?>' />
 		<input type='hidden' name='action' value='modify' />
 		<input type='submit' value='Modify' onclick='this.form.submit();' /></form>
 <?php 	} ?>
