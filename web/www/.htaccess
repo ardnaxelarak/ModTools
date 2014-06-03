@@ -10,4 +10,5 @@ RewriteRule ^login_error$ login.php?error=1
 RewriteRule ^login$ login.php
 RewriteRule ^profile$ profile.php
 RewriteRule ^index$ index.php
+RewriteRule ^new$ newgame.php
 RewriteRule ^logout$ logout.php

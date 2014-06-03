@@ -1,0 +1,57 @@
+#!/usr/bin/ruby
+
+require_relative 'Bot2r1b'
+require_relative 'Scan'
+require_relative 'Setup'
+
+def check_active
+	res = $conn.query("SELECT gid, g.tid, t.short_name, game_index, g.name FROM games g LEFT JOIN statuses s ON g.status = s.sid LEFT JOIN game_types t ON g.tid = t.tid WHERE s.scan")
+
+	for row in res
+		(gid, tid, tsn, gind, name) = row
+		gid = gid.to_i
+		tid = tid.to_i
+
+		if (tid == 1)
+			b = Bot2r1b.new(row[0].to_i)
+			b.scan(false)
+			b.tally(false, nil, false)
+			# scan_transfers(b, true)
+		end
+	end
+end
+
+def check_others
+	check_mail(true)
+	res = $conn.query("SELECT gid, signup_id, t.short_name, game_index, g.name FROM games g LEFT JOIN game_types t ON g.tid = t.tid WHERE g.signup_modified AND g.signup_id IS NOT NULL")
+	for row in res
+		(gid, article_id, tsn, gind, name) = row
+		puts "Updating player list for #{tsn} ##{gind}: #{name}"
+		content = "[color=#008800]"
+		content << "Player list according to ModKiwi:"
+		pres = $conn.query("SELECT p.username FROM game_players g JOIN players p ON g.pid = p.pid WHERE g.gid = #{gid} ORDER BY p.username")
+		num_rows = pres.num_rows
+		for line in pres
+			content << "\n#{line[0]}"
+		end
+		content << "\n\n#{num_rows} players are signed up."
+		content << "\n\nTo sign up for this game go to"
+		content << "\nhttp://modkiwi.no-ip.biz/game/#{gid}"
+		content << "[/color]"
+		$wi.edit_article(article_id, "Signup List", content);
+		$conn.query("UPDATE games SET signup_modified = FALSE WHERE gid = #{gid}")
+	end
+	res = $conn.query("SELECT id, gid, action FROM actions")
+	for row in res
+		(id, gid, action) = row
+		if (action == "postsignup")
+			gres = $conn.query("SELECT thread_id FROM games WHERE gid = #{gid}")
+			for grow in gres
+				thread = grow[0]
+				signup_id = $wi.post(thread, "[color=#008800]To sign up for this game, go to\nhttp://modkiwi.no-ip.biz/game/#{gid}[/color]")
+			end
+			$conn.query("UPDATE games SET signup_id = #{signup_id} WHERE gid = #{gid}")
+			$conn.query("DELETE FROM actions WHERE id = #{id}")
+		end
+	end
+end

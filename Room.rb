@@ -3,17 +3,22 @@ require_relative "Vote"
 require_relative "Setup"
 
 class Room
-	attr_accessor :rid, :name, :thread
-	def initialize(rid)
+	attr_accessor :rid, :gid, :name, :thread, :hidden
+	def initialize(rid, hidden)
 		@rid = rid
-		res = $conn.query("SELECT name, thread_id FROM rooms WHERE rid = #{@rid}")
+		res = $conn.query("SELECT name, thread_id, gid FROM rooms WHERE rid = #{@rid}")
+		@hidden = hidden
 		return unless row = res.fetch_row
-		(@name, @thread) = row
+		(@name, @thread, @gid) = row
 	end
 
 	def players
 		pl = []
-		res = $conn.query("SELECT pid FROM room_players WHERE rid = #{@rid}")
+		if @hidden
+			res = $conn.query("SELECT pid FROM game_players WHERE gid = #{@gid}")
+		else
+			res = $conn.query("SELECT pid FROM room_players WHERE rid = #{@rid}")
+		end
 		for row in res
 			pl.push(row[0].to_i)
 		end
@@ -97,9 +102,9 @@ class Room
 		return $pl[row[0].to_i].name
 	end
 
-	def tally(update = false, hidden = false)
+	def tally(update = false, secret_tally = false)
 		text = ""
-		text = "[o]" if hidden
+		text = "[o]" if secret_tally
 		res = $conn.query("SELECT message FROM room_messages WHERE rid = #{@rid} ORDER BY mid")
 		if res.num_rows > 0
 			text << "[b][color=purple]"
@@ -108,8 +113,9 @@ class Room
 			end
 			text << "[/b][/color]\n"
 		end
-		text << "[color=#009900]Current Leader: #{leader_name}"
-		text << "\n\nVOTE TALLY:"
+		text << "[color=#009900]"
+		text << "Current Leader: #{leader_name}\n\n" unless hidden
+		text << "VOTE TALLY:"
 		
 		res = $conn.query("SELECT pid, votes FROM vote_tally WHERE rid = #{@rid} ORDER BY votes DESC, last, last_old")
 		for row in res
@@ -124,8 +130,12 @@ class Room
 		for row in res
 			nv.push(row[0].to_i)
 		end
-		nv = nv.collect{|pid| $pl[pid].name}.sort_by{|name| name.upcase}
-		text << "\n\nNot voting: #{nv.join(", ")}" if nv.length > 0
+		if hidden
+			text << "\n\nNot voting: everyone else"
+		else
+			nv = nv.collect{|pid| $pl[pid].name}.sort_by{|name| name.upcase}
+			text << "\n\nNot voting: #{nv.join(", ")}" if nv.length > 0
+		end
 		text << "\n\n'*' indicates a locked vote."
 
 		text << "[/color]"
@@ -133,7 +143,7 @@ class Room
 			$conn.query("UPDATE rooms SET modified = FALSE WHERE rid = #{@rid}")
 			$conn.query("DELETE FROM room_messages WHERE rid = #{@rid}")
 		end
-		text << "[/o]" if hidden
+		text << "[/o]" if secret_tally
 		return text
 	end
 
@@ -147,7 +157,7 @@ class Room
 	def vote(voter, votee, locked = false)
 		$conn.query("INSERT INTO room_votes (rid, voter, votee, locked) VALUES (#{@rid}, #{voter}, #{votee}, #{locked ? "1" : "0"})")
 		$conn.query("UPDATE rooms SET modified = TRUE WHERE rid = #{@rid}")
-		recalc
+		recalc unless hidden
 	end
 
 	def recalc

@@ -7,10 +7,14 @@ require 'yaml'
 
 class Bot2r1b
 	attr_accessor :roundnum, :filename, :last_mail, :rooms, :index
-	attr_accessor :gid
+	attr_accessor :gid, :name, :thread, :hidden
 
 	def initialize(gid)
 		@gid = gid
+		res = $conn.query("SELECT name, thread_id, rooms_hidden FROM games WHERE gid = #{@gid}")
+		return unless row = res.fetch_row
+		(@name, @thread, @hidden) = row
+		@hidden = @hidden != "0"
 	end
 
 	def self.create(index, name, thread)
@@ -123,44 +127,58 @@ class Bot2r1b
 			rooms.push({:rid => row[0].to_i, :leader => leader, :name => row[2], :players => []})
 		end
 
-		for room in rooms
-			res = $conn.query("SELECT pid FROM room_players WHERE rid = #{room[:rid]}")
-			for row in res
-				room[:players].push(row[0].to_i)
+		if (hidden)
+			for room in rooms
+				print "#{room[:name]} round #{newround} thread: "
+				thread = gets.chomp
+				room[:thread] = thread
 			end
 
-			print "#{room[:name]} round #{newround} thread: "
-			thread = gets.chomp
-			room[:thread] = thread
-			unless room[:leader]
-				leader = Room.new(room[:rid]).choose_leader
-				room[:leader] = leader
-				puts "#{$pl[leader].name} has become leader of #{room[:name]}!" if leader
+			$conn.query("UPDATE games SET round_num = #{newround} WHERE gid = #{@gid}")
+			for room in rooms
+				rid = create_room(room[:name], room[:thread], nil, nil)
+				puts "#{room[:name]} created."
 			end
-		end
-
-		for fromdata in rooms
-			for todata in rooms
-				next if fromdata == todata
-				puts "Transfers from #{fromdata[:name]} to #{todata[:name]}#{fromdata[:leader] ? " (#{$pl[fromdata[:leader]].name})" : ""}"
-				print "- "
-				while (line = gets)
-					line.chomp!
-					if (pid = $pl.get_player(line, fromdata[:players]))
-						fromdata[:players] -= [pid]
-						todata[:players] += [pid]
-						puts "Transferred #{$pl[pid].name}"
-					end
-					print "- "
+		else
+			for room in rooms
+				res = $conn.query("SELECT pid FROM room_players WHERE rid = #{room[:rid]}")
+				for row in res
+					room[:players].push(row[0].to_i)
 				end
-				print "\b\b"
-			end
-		end
 
-		$conn.query("UPDATE games SET round_num = #{newround} WHERE gid = #{@gid}")
-		for room in rooms
-			rid = create_room(room[:name], room[:thread], room[:players], room[:leader])
-			puts "#{room[:name]} created. (#{room[:players].collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
+				print "#{room[:name]} round #{newround} thread: "
+				thread = gets.chomp
+				room[:thread] = thread
+				unless room[:leader]
+					leader = Room.new(room[:rid], hidden).choose_leader
+					room[:leader] = leader
+					puts "#{$pl[leader].name} has become leader of #{room[:name]}!" if leader
+				end
+			end
+
+			for fromdata in rooms
+				for todata in rooms
+					next if fromdata == todata
+					puts "Transfers from #{fromdata[:name]} to #{todata[:name]}#{fromdata[:leader] ? " (#{$pl[fromdata[:leader]].name})" : ""}"
+					print "- "
+					while (line = gets)
+						line.chomp!
+						if (pid = $pl.get_player(line, fromdata[:players]))
+							fromdata[:players] -= [pid]
+							todata[:players] += [pid]
+							puts "Transferred #{$pl[pid].name}"
+						end
+						print "- "
+					end
+					print "\b\b"
+				end
+			end
+
+			$conn.query("UPDATE games SET round_num = #{newround} WHERE gid = #{@gid}")
+			for room in rooms
+				rid = create_room(room[:name], room[:thread], room[:players], room[:leader])
+				puts "#{room[:name]} created. (#{room[:players].collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")})"
+			end
 		end
 	end
 
@@ -246,7 +264,7 @@ class Bot2r1b
 	def tally(force = false, rl = nil, verbose = true)
 		rl = all_rooms unless rl
 		for rid in rl
-			room = Room.new(rid)
+			room = Room.new(rid, hidden)
 			if force || room.need_tally?
 				if $wi.post(room.thread, room.tally(true))
 					puts "Updated vote tally of #{room.name}" if verbose
@@ -262,7 +280,7 @@ class Bot2r1b
 	def scan(verbose = false, only_new = true, rl = nil)
 		rl = all_rooms unless rl
 		for rid in rl
-			scan_room(rid, only_new, verbose)
+			scan_room(rid, hidden, only_new, verbose)
 		end
 	end
 
@@ -280,7 +298,7 @@ class Bot2r1b
 	def vote(p1, p2, locked = false)
 		return unless (pid_room = get_player_room(p1))
 		(voter, rid) = pid_room
-		room = Room.new(rid)
+		room = Room.new(rid, hidden)
 		return unless (votee = $pl.get_player(p2, room.players))
 		room.vote(voter, votee, locked)
 	end
@@ -288,7 +306,7 @@ class Bot2r1b
 	def appoint(p1)
 		return unless (pid_room = get_player_room(p1))
 		(pid, rid) = pid_room
-		room = Room.new(rid)
+		room = Room.new(rid, hidden)
 
 		puts "#{$pl[pid]} has been appointed leader of #{room.name}"
 		room.update_leader(pid)
@@ -297,28 +315,28 @@ class Bot2r1b
 	def remove(p1)
 		return unless (pid_room = get_player_room(p1))
 		(pid, rid) = pid_room
-		room = Room.new(rid)
+		room = Room.new(rid, hidden)
 		room.remove_player(pid)
 	end
 
 	def add_player(p1, r1)
 		return unless (pid = $pl.get_player(p1))
 		# return if @rooms[@roundnum].collect{|r| r.players}.flatten.include?(pid)
-		room = Room.new(r1)
+		room = Room.new(r1, hidden)
 		room.add_player(pid)
 	end
 
 	def lock(p1)
 		return unless (pid_room = get_player_room(p1))
 		(pid, rid) = pid_room
-		room = Room.new(rid)
+		room = Room.new(rid, hidden)
 		room.lock(pid)
 	end
 
 	def unlock(p1)
 		return unless (pid_room = get_player_room(p1))
 		(pid, rid) = pid_room
-		room = Room.new(rid)
+		room = Room.new(rid, hidden)
 		room.unlock(pid)
 	end
 
@@ -343,7 +361,7 @@ class Bot2r1b
 
 	def post(rl = nil)
 		rl = all_rooms unless rl
-		rooms = rl.collect{|rid| Room.new(rid)}
+		rooms = rl.collect{|rid| Room.new(rid, hidden)}
 		puts "Type a message to post to the following rooms: #{rooms.collect{|room| room.name}.join(", ")}."
 
 		text = ""
@@ -368,7 +386,7 @@ class Bot2r1b
 		else
 			return
 		end
-		for room in rl.collect{|rid| Room.new(rid)}
+		for room in rl.collect{|rid| Room.new(rid, hidden)}
 			$wi.post(room.thread, text)
 		end
 	end
@@ -380,7 +398,7 @@ class Bot2r1b
 	def print_status
 		puts "Round #{round_num}"
 		for rid in all_rooms
-			room = Room.new(rid)
+			room = Room.new(rid, hidden)
 			puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.leader_name}"
 			# puts "#{room.name}#{(room.need_tally?)?"*":""} - #{room.get_leader_name} (#{room.get_transfer ? room.get_transfer.collect{|pid| $pl[pid].name}.join(", ") : "none"})"
 		end

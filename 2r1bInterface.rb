@@ -113,7 +113,7 @@ b.tally(true, rl) if opts[:force_tally]
 
 if opts[:show_votes]
 	for rid in rl
-		room = Room.new(rid)
+		room = Room.new(rid, b.hidden)
 		puts room.tally
 	end
 end
@@ -123,7 +123,7 @@ b.appoint(opts[:appoint]) if opts[:appoint_given]
 b.post(rl) if opts[:post]
 
 if opts[:list_rooms]
-	for room in b.all_rooms.collect{|rid| Room.new(rid)}
+	for room in b.all_rooms.collect{|rid| Room.new(rid, b.hidden)}
 		puts "#{room.name}: #{room.players.collect{|ind| $pl[ind].name}.sort_by{|name| name.upcase}.join(", ")}"
 	end
 end

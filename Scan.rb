@@ -18,8 +18,8 @@ def scan_actions(list)
 	actions
 end
 
-def scan_room(rid, only_new = true, verbose = false)
-	room = Room.new(rid)
+def scan_room(rid, hidden, only_new = true, verbose = false)
+	room = Room.new(rid, hidden)
 	if only_new
 		list = $wi.get_posts(room.thread, room.last_article)
 	else

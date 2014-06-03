@@ -10,7 +10,7 @@ $logged = isset($_SESSION['user_id']);
 if ($logged)
 	$user_id = $_SESSION['user_id'];
 else
-	$user_id = null;
+	$user_id = -1;
 
 if (isset($_POST['gid']))
 	$gid = $_POST['gid'];
@@ -19,16 +19,21 @@ else if (isset($_GET['gid']))
 else
 	$gid = null;
 
+$closed = false;
+
 if (!is_null($gid)) {
-	$stmt = $mysqli->prepare("SELECT tid, type_short, sid, status_name, game_index, game_name, thread_id, max_players, signup, show_rooms FROM game_view WHERE gid = ?");
+	$stmt = $mysqli->prepare("SELECT tid, type_short, sid, status_name, game_index, game_name, thread_id, max_players, signup, show_rooms, roles_change FROM game_view WHERE gid = ?");
 	$stmt->bind_param('i', $gid);
 	$stmt->execute();
 	$stmt->store_result();
-	$stmt->bind_result($tid, $type_short, $sid, $status_name, $game_index, $game_name, $thread_id, $max_players, $can_signup, $show_rooms);
+	$stmt->bind_result($tid, $type_short, $sid, $status_name, $game_index, $game_name, $thread_id, $max_players, $can_signup, $show_rooms, $change);
 	$can_signup = $can_signup > 0;
 	$show_rooms = $show_rooms > 0;
+	$change = $change > 0;
 	if (!($stmt->fetch()))
 		$gid = null;
+	if ($sid == '5')
+		$closed = true;
 	$stmt->close();
 }
 
@@ -180,12 +185,13 @@ if (!is_null($action) && !$logged) {
 		$message .= "<p>You are already signed up!";
 	} else if (!$can_signup) {
 		$message .= "<p>This game is not open for signups at the moment.</p>";
-	} else if (count($p_list) >= $max_players) {
+	} else if (!is_null($max_players) && count($p_list) >= $max_players) {
 		$message .= "<p>This game is already full.";
 	} else {
 		$ps = $mysqli->prepare("INSERT INTO game_players (gid, pid) VALUES (?, ?)");
 		$ps->bind_param('ii', $gid, $user_id);
 		$ps->execute();
+		$mysqli->query("UPDATE games SET signup_modified = TRUE WHERE gid = $gid");
 		$message .= "<p>You have successfuly signed up.</p>";
 	}
 } else if ($action == "unsignup") {
@@ -197,6 +203,7 @@ if (!is_null($action) && !$logged) {
 		$ps = $mysqli->prepare("DELETE FROM game_players WHERE gid = ? AND pid = ?");
 		$ps->bind_param('ii', $gid, $user_id);
 		$ps->execute();
+		$mysqli->query("UPDATE games SET signup_modified = TRUE WHERE gid = $gid");
 		$message .= "<p>You have successfuly been removed from the game.</p>";
 	}
 }
