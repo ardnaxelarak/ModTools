@@ -7,7 +7,7 @@ class BotMM
 	attr_accessor :roundnum, :index
 	attr_accessor :gid, :name, :thread, :hidden
 
-	POS_NAMES = ["", "left", "middle", "right"]
+	POS_NAMES = ["", "right", "middle", "left"]
 
 	def initialize(gid)
 		@gid = gid
@@ -47,7 +47,7 @@ class BotMM
 			modmessage << "#{$pl[pid].name}\n"
 		end
 		modmessage << "\n\nInfiltrators are #{name_list(nums.select{|ind| roles[ind] == 43}.collect{|ind| list[ind]})}."
-		modmessage << "\n\n[c]1 2 3 Cards"
+		modmessage << "\n\n[c]R M L Cards"
 		for i in nums
 			modmessage << "\n#{cards[i].collect{|rid| rid == 42 ? "H" : "I"}.join(" ")} #{$pl[list[i]].name}"
 		end
@@ -122,6 +122,7 @@ class BotMM
 				message << "#{$pl[viewer].name} is looking at #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card."
 			end
 		elsif (round_num == 2)
+			message << "Skirmish-CM: #{$pl[viewee]}"
 		end
 		colors = color_list
 		color_hash = {}
@@ -135,7 +136,7 @@ class BotMM
 			text << "\n"
 			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]#{i + 1}. #{$pl[plist[i]].name}[c] [/c][/bgcolor][/color]"
 			text << "\n"
-			text << "[c][color=white][b][bgcolor=gray]  L  [/bgcolor] [bgcolor=gray]  M  [/bgcolor] [bgcolor=gray]  R  [/bgcolor][/b][/color][/c]"
+			text << "[c][color=white][b][bgcolor=gray]  R  [/bgcolor] [bgcolor=gray]  M  [/bgcolor] [bgcolor=gray]  L  [/bgcolor][/b][/color][/c]"
 			text << "\n"
 			text << "[c][color=white][b]"
 			text << (1..3).collect{|pos| knowledge_markers(plist[i], pos, color_hash).join}.join(" ")
@@ -151,7 +152,7 @@ class BotMM
 			text << (1..3).collect{|pos| knowledge_markers(plist[i], pos, color_hash).reverse.join}.reverse.join(" ")
 			text << "[/b][/color][/c]"
 			text << "\n"
-			text << "[c][color=white][b][bgcolor=gray]  R  [/bgcolor] [bgcolor=gray]  M  [/bgcolor] [bgcolor=gray]  L  [/bgcolor][/b][/color][/c]"
+			text << "[c][color=white][b][bgcolor=gray]  L  [/bgcolor] [bgcolor=gray]  M  [/bgcolor] [bgcolor=gray]  R  [/bgcolor][/b][/color][/c]"
 			text << "\n"
 			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]#{i + 1}. #{$pl[plist[i]].name}[c] [/c][/bgcolor][/color]"
 			text << "\n"
@@ -161,7 +162,7 @@ class BotMM
 			text << "[/center]"
 			texts[i] = text
 		end
-		message << "\n\n[size=12]"
+		message << "\n\n[size=10]"
 		for i in 0...num / 2
 			message << "[floatleft]"
 			message << texts[i]
@@ -180,7 +181,7 @@ class BotMM
 	end
 
 	def send_view
-		res = $conn.query("SELECT g.viewer, g.viewee, g.view_pos, r1.name, pr.pid FROM games g LEFT JOIN player_roles pr ON pr.gid = g.gid AND pr.pid = g.viewer LEFT JOIN role_cards c ON c.gid = g.gid AND c.pid = g.viewee AND c.position = g.view_pos LEFT JOIN roles r1 ON c.role = r1.id WHERE g.gid = #{@gid}")
+		res = $conn.query("SELECT g.viewer, g.viewee, g.view_pos, r1.name, pr.role FROM games g LEFT JOIN player_roles pr ON pr.gid = g.gid AND pr.pid = g.viewer LEFT JOIN role_cards c ON c.gid = g.gid AND c.pid = g.viewee AND c.position = g.view_pos LEFT JOIN roles r1 ON c.role = r1.id WHERE g.gid = #{@gid}")
 		return unless row = res.fetch_row
 		(viewer, viewee, view_pos, view, viewerloyalty) = row
 		viewer = viewer.to_i if viewer
@@ -209,7 +210,7 @@ class BotMM
 			if (phase_num > (2 * num + 1))
 				# move into phase 1
 				round_num = 2
-				phase_num = 1
+				phase_num = 0
 			else
 				viewer = plist[phase_num / 2 - 1]
 				viewee = plist[(phase_num / 2 - 2 + 2 * (phase_num % 2)) % num]
@@ -220,6 +221,8 @@ class BotMM
 				message << "\n\n#{$pl[viewer].name} has been sent #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card.\nPlease post either [b]Honest[/b] or [b]Infiltrator[/b] in the thread.\n(You must tell the truth if you are Honest)"
 				$wi.post(thread, message)
 			end
+		end
+		if (round_num > 1)
 		end
 	end
 

@@ -209,7 +209,12 @@ class Interface
 
 	def get_posts(id, start = nil)
 		check
-		start = 0 unless start
+		if start
+			page = @agent.get("http://boardgamegeek.com/article/#{start}")
+			page = @agent.get("http://boardgamegeek.com/thread/#{id}") if page.body.include?("Invalid threadid for article")
+		else
+			page = @agent.get("http://boardgamegeek.com/thread/#{id}")
+		end
 		page = @agent.get("http://boardgamegeek.com/thread/#{id}")
 		posts = []
 		loop do
