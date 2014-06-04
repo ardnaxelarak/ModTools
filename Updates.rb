@@ -1,28 +1,43 @@
 #!/usr/bin/ruby
 
 require_relative 'Bot2r1b'
+require_relative 'BotMM'
 require_relative 'Scan'
 require_relative 'Setup'
 
 def check_active
-	res = $conn.query("SELECT gid, g.tid, t.short_name, game_index, g.name FROM games g LEFT JOIN statuses s ON g.status = s.sid LEFT JOIN game_types t ON g.tid = t.tid WHERE s.scan")
+	res = $conn.query("SELECT gid, g.tid, t.short_name, game_index, g.name, g.auto FROM games g LEFT JOIN statuses s ON g.status = s.sid LEFT JOIN game_types t ON g.tid = t.tid WHERE s.scan")
 
 	for row in res
-		(gid, tid, tsn, gind, name) = row
+		(gid, tid, tsn, gind, name, auto) = row
 		gid = gid.to_i
 		tid = tid.to_i
+		auto = auto.to_i > 0
 
-		if (tid == 1)
+		case tid
+		when 1
 			b = Bot2r1b.new(row[0].to_i)
 			b.scan(false)
 			b.tally(false, nil, false)
 			# scan_transfers(b, true)
+		when 5
+			if (auto)
+				b = BotMM.new(row[0].to_i)
+				b.scan(true)
+			end
 		end
 	end
 end
 
 def check_others
 	check_mail(true)
+	res = $conn.query("SELECT m.id, p.username, CONCAT(t.short_name, ' #', g.game_index, ': ', g.name) AS subject, message FROM player_messages m JOIN players p ON m.pid = p.pid JOIN games g ON m.gid = g.gid JOIN game_types t ON g.tid = t.tid")
+	for row in res
+		(m_id, username, subject, message) = row
+		puts "Sending message to #{username} in #{subject}"
+		$wi.send_geekmail(username, subject, message)
+		$conn.query("DELETE FROM player_messages WHERE id = #{m_id}")
+	end
 	res = $conn.query("SELECT gid, signup_id, t.short_name, game_index, g.name FROM games g LEFT JOIN game_types t ON g.tid = t.tid WHERE g.signup_modified AND g.signup_id IS NOT NULL")
 	for row in res
 		(gid, article_id, tsn, gind, name) = row

@@ -5,7 +5,6 @@ include_once '../include/header.php';
  
 sec_session_start();
 
-print_r($_POST);
 $logged = isset($_SESSION['user_id']);
 
 if ($logged)

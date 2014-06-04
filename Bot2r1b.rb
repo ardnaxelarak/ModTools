@@ -103,6 +103,7 @@ class Bot2r1b
 		$conn.query("INSERT INTO rooms (gid, thread_id, round_num, name, leader) VALUES (#{@gid}, '#{thread}', #{round_num}, '#{name}', #{leader ? leader : "NULL"})")
 		res = $conn.query("SELECT rid FROM rooms WHERE gid = #{@gid} AND round_num = #{rn} AND thread_id = '#{thread}' AND name = '#{name}'")
 		return nil unless row = res.fetch_row
+		return nil unless players
 		rid = row[0].to_i
 		plist = players.collect{|pid| "(#{rid}, #{pid})"}.join(", ")
 		$conn.query("INSERT INTO room_players (rid, pid) VALUES #{plist}")
