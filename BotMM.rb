@@ -499,7 +499,7 @@ class BotMM
 		end
 		text << "[color=purple][b]"
 		if count >= num / 2
-			text << "\n#{$pl[viewee]} has received a #{["Benefit of the Doubt", "Reliable", "Captain"][round_num - 1]} card."
+			text << "\n#{$pl[viewee]} has received a #{["Benefit of the Doubt", "Reliable", "Captain"][round_num - 2]} card."
 			$conn.query("UPDATE player_cards SET card = #{42 + round_num} WHERE gid = #{@gid} AND pid = #{viewee}")
 		else
 			text << "\n#{$pl[viewee]} has been Punched."
