@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 require 'mechanize'
+# require_relative 'Mechanize_fix'
 
 class Interface
 	attr_accessor :agent, :logged_in, :verbose
