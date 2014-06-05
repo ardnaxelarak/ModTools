@@ -5,8 +5,9 @@ require 'mechanize'
 # require_relative 'Mechanize_fix'
 
 class Interface
-	attr_accessor :agent, :logged_in, :verbose
+	attr_accessor :agent, :logged_in, :verbose, :stdout
 	def initialize(conn)
+		@stdout = false
 		@verbose = true
 		@agent = Mechanize.new
 		@logged_in = false
@@ -34,6 +35,11 @@ class Interface
 	end
 
 	def post(thread, content)
+		if (@stdout)
+			puts "Thread: #{thread}"
+			puts content
+			return
+		end
 		check
 		page = @agent.get("http://boardgamegeek.com/thread/#{thread}")
 		page = @agent.click("Reply")
@@ -112,6 +118,12 @@ class Interface
 	end
 
 	def send_geekmail(user, subject, content)
+		if (@stdout)
+			puts "Geekmail to: #{user}"
+			puts "Subject: #{subject}"
+			puts content
+			return
+		end
 		check
 		page = @agent.post("http://boardgamegeek.com/geekmail_controller.php", {"B1" => "Send", "action" => "save", "body" => content, "savecopy" => "1", "subject" => subject, "touser" => user})
 		times = 0
