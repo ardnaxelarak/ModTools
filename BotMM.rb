@@ -291,6 +291,7 @@ class BotMM
 			message << texts[i]
 			message << "[/floatleft]"
 		end
+		message << "[c]#{" " * 84}[/c]"
 		message << "[/size][clear]"
 		return message
 	end
