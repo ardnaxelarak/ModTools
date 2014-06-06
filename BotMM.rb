@@ -301,7 +301,7 @@ class BotMM
 			message << texts[i]
 			message << "[/floatleft]"
 		end
-		message << "[c]#{" " * (20 * ((num + 1) / 2)}[/c]"
+		message << "[c]#{" " * (20 * ((num + 1) / 2))}[/c]"
 		message << "[/size][clear]"
 		if (round_num >= 2 && round_num <= 4 && viewee && !viewer)
 			message << "\n\n[b]VOTE! Voting links: [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Protect%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#009900]Protect[/COLOR][/url] / [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Punch%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#FF0000]Punch[/COLOR][/url][/b]"
