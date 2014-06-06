@@ -77,11 +77,11 @@ class BotMM
 		when 3
 			pos -= 1 if num > 5
 		end
-		pos = pos % 6
+		pos = pos % num
 		return plist[pos] if can_view(plist[pos], plist[position])
 		pos -= 1
 		return plist[pos] if can_view(plist[pos], plist[position])
-		pos = (pos + 2) % 6
+		pos = (pos + 2) % num
 		return plist[pos] if can_view(plist[pos], plist[position])
 		return nil
 	end
@@ -393,7 +393,7 @@ class BotMM
 			when "infiltrator"
 				if (view_pos)
 					viewed(viewer, viewee, view_pos, false)
-					puts "#{$pl[viewer].name} viewed #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card as Honest" if verbose
+					puts "#{$pl[viewer].name} viewed #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card as Infiltrator" if verbose
 				end
 			when "left"
 				unless (view_pos)
