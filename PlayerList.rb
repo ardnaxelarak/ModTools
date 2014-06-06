@@ -21,6 +21,15 @@ class PlayerList
 		return @players[index]
 	end
 
+	def get_id(name, create = false)
+		list = @players.select{|pl| pl.name.downcase == name.downcase}
+		if list.length == 0
+			return nil unless create
+			return create_user(name)
+		end
+		return list[0].pid
+	end
+
 	def get_player(name, list = nil, verbose = true,
 				   none_message = nil, many_message = nil)
 		none_message = "%s: No match found\n" unless none_message

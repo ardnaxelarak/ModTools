@@ -29,6 +29,13 @@ def check_active
 	end
 end
 
+def check_signups
+	res = $conn.query("SELECT gid FROM games g LEFT JOIN statuses s ON g.status = s.sid WHERE s.signup")
+	for row in res
+		scan_signups(row[0].to_i, false)
+	end
+end
+
 def check_others
 	check_mail(true)
 	res = $conn.query("SELECT m.id, p.username, CONCAT(t.short_name, ' #', g.game_index, ': ', g.name) AS subject, message FROM player_messages m JOIN players p ON m.pid = p.pid JOIN games g ON m.gid = g.gid JOIN game_types t ON g.tid = t.tid")
@@ -50,8 +57,9 @@ def check_others
 			content << "\n#{line[0]}"
 		end
 		content << "\n\n#{num_rows} players are signed up."
-		content << "\n\nTo sign up for this game go to"
-		content << "\nhttp://modkiwi.no-ip.biz/game/#{gid}"
+		content << "\n\nTo sign up for this game, post [b]signup[/b] in bold.\n"
+		content << "To remove yourself from this game, post [b]remove[/b] in bold.\n"
+		content << "You can also sign up at http://modkiwi.no-ip.biz/game/#{gid}"
 		content << "[/color]"
 		$wi.edit_article(article_id, "Signup List", content);
 		$conn.query("UPDATE games SET signup_modified = FALSE WHERE gid = #{gid}")
@@ -63,7 +71,7 @@ def check_others
 			gres = $conn.query("SELECT thread_id FROM games WHERE gid = #{gid}")
 			for grow in gres
 				thread = grow[0]
-				signup_id = $wi.post(thread, "[color=#008800]To sign up for this game, go to\nhttp://modkiwi.no-ip.biz/game/#{gid}[/color]")
+				signup_id = $wi.post(thread, "[color=#008800]To sign up for this game, post [b]signup[/b] in bold.\nYou can also sign up at http://modkiwi.no-ip.biz/game/#{gid}[/color]")
 			end
 			$conn.query("UPDATE games SET signup_id = #{signup_id} WHERE gid = #{gid}")
 			$conn.query("DELETE FROM actions WHERE id = #{id}")

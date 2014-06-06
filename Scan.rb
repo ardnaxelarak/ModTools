@@ -2,6 +2,7 @@ require 'digest/sha2'
 require 'securerandom'
 require_relative 'Setup'
 require_relative 'Room'
+require_relative 'Game'
 
 def scan_actions(list)
 	return if list.length <= 0
@@ -59,6 +60,72 @@ def scan_room(rid, hidden, only_new = true, verbose = false)
 	end
 end
 
+def scan_signups(gid, verbose = false, only_new = true)
+	res = $conn.query("SELECT thread_id, last_scanned, max_players FROM games WHERE gid = #{gid}")
+	return unless row = res.fetch_row
+	thread = row[0]
+	if only_new
+		last = row[1]
+	else
+		last = nil
+	end
+	max_players = row[2]
+	max_players = max_players.to_i if max_players
+	g = Game.new(gid)
+	plist = g.all_players
+	plist.collect!{|pid| $pl[pid].name.downcase}
+	current_players = plist.length
+	list = $wi.get_posts(thread, last)
+	return if list.length <= 0
+	new_last = list.last[:id]
+
+	actions = []
+	pattern = /(signup|remove)/
+	for item in list
+		for post in item[:posts]
+			next if item[:user] == "modkiwi"
+			for action in post.scan(pattern)
+				actions.push([item[:user], action[0].downcase])
+			end
+		end
+	end
+
+	add = []
+	remove = []
+
+	for action in actions
+		case action[1]
+		when "signup"
+			puts "#{action[0]} has signed up for #{g.name}"
+			if (plist.include?(action[0].downcase))
+				remove -= [action[0]]
+			else
+				add.push(action[0])
+			end
+		when "remove"
+			puts "#{action[0]} has removed from #{g.name}"
+			if (plist.include?(action[0].downcase))
+				remove.push(action[0])
+			else
+				add -= [action[0]]
+			end
+		end
+	end
+
+	add = add[0...(max_players - current_players + remove.length)] if max_players
+
+	add.collect!{|pname| $pl.get_id(pname, true)}
+	remove.collect!{|pname| $pl.get_id(pname)}
+
+	$conn.query("DELETE FROM game_players WHERE gid = #{gid} AND pid IN (#{remove.join(", ")}") if remove.length > 0
+	
+	$conn.query("INSERT INTO game_players (gid, pid) VALUES #{add.collect{|pid| "(#{gid}, #{pid})"}.join(", ")}") if add.length > 0
+	if (add.length > 0 || remove.length > 0)
+		$conn.query("UPDATE games SET signup_modified = TRUE, last_scanned = #{new_last} WHERE gid = #{gid}")
+	else
+		$conn.query("UPDATE games SET last_scanned = #{new_last} WHERE gid = #{gid}")
+	end
+end
 
 # TODO: Fix this
 def scan_transfers(m, verbose = false)
