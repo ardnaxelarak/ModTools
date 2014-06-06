@@ -301,7 +301,7 @@ class BotMM
 			message << texts[i]
 			message << "[/floatleft]"
 		end
-		message << "[c]#{" " * 84}[/c]"
+		message << "[c]#{" " * (20 * ((num + 1) / 2)}[/c]"
 		message << "[/size][clear]"
 		if (round_num >= 2 && round_num <= 4 && viewee && !viewer)
 			message << "\n\n[b]VOTE! Voting links: [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Protect%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#009900]Protect[/COLOR][/url] / [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Punch%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#FF0000]Punch[/COLOR][/url][/b]"
@@ -368,11 +368,17 @@ class BotMM
 				phase_num = pos
 				viewee = plist[pos]
 				viewer = get_viewer(pos, round_num - 1)
-				view_pos = nil
-				$conn.query("UPDATE games SET round_num = #{round_num}, phase_num = #{phase_num}, viewee = #{viewee}, viewer = #{viewer}, view_pos = NULL WHERE gid = #{@gid}")
-				message = status
-				message << "\n\n#{$pl[viewer].name} is deciding which of #{$pl[viewee].name}'s cards to view.\nPlease post [b]left[/b], [b]middle[/b], or [b]right[/b] in the thread."
-				$wi.post(thread, message)
+				if viewer
+					view_pos = nil
+					$conn.query("UPDATE games SET round_num = #{round_num}, phase_num = #{phase_num}, viewee = #{viewee}, viewer = #{viewer}, view_pos = NULL WHERE gid = #{@gid}")
+					message = status
+					message << "\n\n#{$pl[viewer].name} is deciding which of #{$pl[viewee].name}'s cards to view.\nPlease post [b]left[/b], [b]middle[/b], or [b]right[/b] in the thread."
+					$wi.post(thread, message)
+				else
+					$conn.query("UPDATE games SET round_num = #{round_num}, phase_num = #{phase_num}, viewee = #{viewee}, viewer = NULL, view_pos = NULL WHERE gid = #{@gid}")
+					$wi.post(thread, "[color=#008800]No one is able to view one of #{$pl[viewee].name}'s cards.[/color]")
+					next_step
+				end
 			end
 		end
 	end
