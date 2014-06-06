@@ -67,6 +67,15 @@ class BotMM
 		return true
 	end
 
+	def num_markers
+		res = $conn.query("SELECT viewer, count(*) FROM role_views WHERE gid = #{@gid} GROUP BY viewer")
+		hash = {}
+		for row in res
+			hash[row[0].to_i] = 4 - row[1].to_i
+		end
+		return hash
+	end
+
 	def get_viewer(position, phase)
 		plist = all_players
 		num = plist.length
@@ -245,11 +254,12 @@ class BotMM
 			color_hash[plist[i]] = colors[i]
 		end
 		texts = []
+		marker_hash = num_markers
 		for i in 0...(num + 1) / 2
 			text = "[center]"
 			text << card_hash[plist[i]]
 			text << "\n"
-			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]#{i + 1}. #{$pl[plist[i]].name}[c] [/c][/bgcolor][/color]"
+			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]#{i + 1}. #{$pl[plist[i]].name} (#{marker_hash[plist[i]]})[c] [/c][/bgcolor][/color]"
 			text << "\n"
 			text << "[c][color=white][b][bgcolor=gray]  R  [/bgcolor] [bgcolor=gray]  M  [/bgcolor] [bgcolor=gray]  L  [/bgcolor][/b][/color][/c]"
 			text << "\n"
@@ -269,7 +279,7 @@ class BotMM
 			text << "\n"
 			text << "[c][color=white][b][bgcolor=gray]  L  [/bgcolor] [bgcolor=gray]  M  [/bgcolor] [bgcolor=gray]  R  [/bgcolor][/b][/color][/c]"
 			text << "\n"
-			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]#{i + 1}. #{$pl[plist[i]].name}[c] [/c][/bgcolor][/color]"
+			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]#{i + 1}. #{$pl[plist[i]].name} (#{marker_hash[plist[i]]})[c] [/c][/bgcolor][/color]"
 			text << "\n"
 			text << card_hash[plist[i]]
 
@@ -293,6 +303,9 @@ class BotMM
 		end
 		message << "[c]#{" " * 84}[/c]"
 		message << "[/size][clear]"
+		if (round_num >= 2 && round_num <= 4 && viewee && !viewer)
+			message << "\n\n[b]VOTE! Voting links: [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Protect%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#009900]Protect[/COLOR][/url] / [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Punch%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#FF0000]Punch[/COLOR][/url][/b]"
+		end
 		return message
 	end
 
@@ -345,7 +358,6 @@ class BotMM
 				$conn.query("UPDATE games SET viewer = NULL WHERE gid = #{@gid}")
 				vote(viewee, true)
 				message = status
-				message << "\n\n[b]VOTE! Voting links: [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Protect%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#009900]Protect[/COLOR][/url] / [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Punch%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#FF0000]Punch[/COLOR][/url][/b]"
 				$wi.post(thread, message)
 			else
 				unless (pos = get_next_pos(plist, phase_num, round_num - 1))
