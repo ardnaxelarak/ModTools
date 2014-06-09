@@ -253,13 +253,21 @@ class BotMM
 		for i in 0...num
 			color_hash[plist[i]] = colors[i]
 		end
+
+		cur_turn = -1
+		cur_turn = phase_num if round_num >= 2 && round_num <= 4
+
 		texts = []
 		marker_hash = num_markers
 		for i in 0...(num + 1) / 2
 			text = "[center]"
 			text << card_hash[plist[i]]
 			text << "\n"
-			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]#{i + 1}. #{$pl[plist[i]].name} (#{marker_hash[plist[i]]})[c] [/c][/bgcolor][/color]"
+			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]"
+			text << "[b]" if i == cur_turn
+			text << "#{i + 1}. #{$pl[plist[i]].name} (#{marker_hash[plist[i]]})"
+			text << "[/b]" if i == cur_turn
+			text << "[c] [/c][/bgcolor][/color]"
 			text << "\n"
 			text << "[c][color=white][b][bgcolor=gray]  R  [/bgcolor] [bgcolor=gray]  M  [/bgcolor] [bgcolor=gray]  L  [/bgcolor][/b][/color][/c]"
 			text << "\n"
@@ -279,7 +287,11 @@ class BotMM
 			text << "\n"
 			text << "[c][color=white][b][bgcolor=gray]  L  [/bgcolor] [bgcolor=gray]  M  [/bgcolor] [bgcolor=gray]  R  [/bgcolor][/b][/color][/c]"
 			text << "\n"
-			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]#{i + 1}. #{$pl[plist[i]].name} (#{marker_hash[plist[i]]})[c] [/c][/bgcolor][/color]"
+			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]"
+			text << "[b]" if i == cur_turn
+			text << "#{i + 1}. #{$pl[plist[i]].name} (#{marker_hash[plist[i]]})"
+			text << "[/b]" if i == cur_turn
+			text << "[c] [/c][/bgcolor][/color]"
 			text << "\n"
 			text << card_hash[plist[i]]
 
@@ -303,8 +315,16 @@ class BotMM
 		end
 		message << "[c]#{" " * (20 * ((num + 1) / 2))}[/c]"
 		message << "[/size][clear]"
-		if (round_num >= 2 && round_num <= 4 && viewee && !viewer)
-			message << "\n\n[b]VOTE! Voting links: [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Protect%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#009900]Protect[/COLOR][/url] / [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Punch%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#FF0000]Punch[/COLOR][/url][/b]"
+		if (round_num >= 2 && round_num <= 4)
+			if (viewee && viewer && view_pos)
+				message << "\n\n#{$pl[viewer].name} has been sent #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card.\nPlease post either [b]Honest[/b] or [b]Infiltrator[/b] in the thread.\n(You must tell the truth if you are Honest)"
+			elsif (viewee && viewer)
+				message << "\n\n#{$pl[viewer].name} is deciding which of #{$pl[viewee].name}'s cards to view.\nPlease post [b]left[/b], [b]middle[/b], or [b]right[/b] in the thread."
+			elsif (viewee)
+				message << "\n\n[b]VOTE! Voting links: [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Protect%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#009900]Protect[/COLOR][/url] / [url=http://boardgamegeek.com/geekmail/compose?touser=modkiwi&subject=MM%20PBF%20#{@index.gsub(" ", "%20")}%20-%20Punch%20#{$pl[viewee].name.gsub(" ", "%20")}][COLOR=#FF0000]Punch[/COLOR][/url][/b]"
+			end
+		elsif (round_num == 1 && viewer && viewee && view_pos)
+			message << "\n\n#{$pl[viewer].name} has been sent #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card.\nPlease post either [b]Honest[/b] or [b]Infiltrator[/b] in the thread.\n(You must tell the truth if you are Honest)"
 		end
 		return message
 	end
@@ -348,7 +368,6 @@ class BotMM
 				$conn.query("UPDATE games SET phase_num = #{phase_num}, viewer = #{viewer}, viewee = #{viewee}, view_pos = #{view_pos} WHERE gid = #{@gid}")
 				send_view
 				message = status
-				message << "\n\n#{$pl[viewer].name} has been sent #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card.\nPlease post either [b]Honest[/b] or [b]Infiltrator[/b] in the thread.\n(You must tell the truth if you are Honest)"
 				$wi.post(thread, message)
 			end
 		end
@@ -372,7 +391,6 @@ class BotMM
 					view_pos = nil
 					$conn.query("UPDATE games SET round_num = #{round_num}, phase_num = #{phase_num}, viewee = #{viewee}, viewer = #{viewer}, view_pos = NULL WHERE gid = #{@gid}")
 					message = status
-					message << "\n\n#{$pl[viewer].name} is deciding which of #{$pl[viewee].name}'s cards to view.\nPlease post [b]left[/b], [b]middle[/b], or [b]right[/b] in the thread."
 					$wi.post(thread, message)
 				else
 					$conn.query("UPDATE games SET round_num = #{round_num}, phase_num = #{phase_num}, viewee = #{viewee}, viewer = NULL, view_pos = NULL WHERE gid = #{@gid}")
@@ -400,6 +418,10 @@ class BotMM
 		$conn.query("UPDATE games SET last_scanned = #{list.last[:id]} WHERE gid = #{@gid}")
 		actions = scan_actions(list)
 		for action in actions
+			if (action[1] == "status")
+				$wi.post(thread, status)
+				next
+			end
 			next unless actor = $pl.get_player(action[0], all_players, verbose)
 			next unless actor == viewer
 			case action[1]
@@ -435,7 +457,7 @@ class BotMM
 	def scan_actions(list)
 		return if list.length <= 0
 		actions = []
-		pattern = /(honest|infiltrator|left|middle|right)/i
+		pattern = /(honest|infiltrator|left|middle|right|status)/i
 		for item in list
 			for post in item[:posts]
 				for action in post.scan(pattern)
@@ -485,7 +507,6 @@ class BotMM
 		$conn.query("UPDATE games SET view_pos = #{view_pos} WHERE gid = #{@gid}")
 		send_view
 		message = status
-		message << "\n\n#{$pl[viewer].name} has been sent #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card.\nPlease post either [b]Honest[/b] or [b]Infiltrator[/b] in the thread.\n(You must tell the truth if you are Honest)"
 		$wi.post(thread, message)
 	end
 
