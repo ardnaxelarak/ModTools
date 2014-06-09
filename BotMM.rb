@@ -1,19 +1,16 @@
 #!/usr/bin/ruby
 
-require_relative 'Setup'
+require_relative 'Game'
 require_relative 'Scan'
 
-class BotMM
+class BotMM < Game
 	attr_accessor :roundnum, :index
 	attr_accessor :gid, :name, :thread, :hidden
 
 	POS_NAMES = ["", "right", "middle", "left"]
 
 	def initialize(gid)
-		@gid = gid
-		res = $conn.query("SELECT name, game_index, thread_id FROM games WHERE gid = #{@gid}")
-		return unless row = res.fetch_row
-		(@name, @index, @thread) = row
+		super(gid)
 	end
 
 	def start_game
@@ -77,7 +74,7 @@ class BotMM
 	end
 
 	def get_viewer(position, phase)
-		plist = all_players
+		plist = turn_order
 		num = plist.length
 		pos = position + num / 2
 		case phase
@@ -95,33 +92,8 @@ class BotMM
 		return nil
 	end
 
-	def all_players
-		res = $conn.query("SELECT pid FROM turn_order WHERE gid = #{@gid} ORDER BY id")
-		list = []
-		for row in res
-			list.push(row[0].to_i)
-		end
-		return list
-	end
-
 	def color_list
 		return ["red", "green", "blue", "orange", "brown", "purple", "black"]
-	end
-
-	def mod_list
-		res = $conn.query("SELECT pid FROM moderators WHERE gid = #{@gid}")
-		list = []
-		for row in res
-			list.push(row[0].to_i)
-		end
-		return list
-	end
-
-	def name_list(pids, verb = false)
-		return "" if pids.length == 0
-		return "#{$pl[pids[0]].name}#{verb ? " is" : ""}" if pids.length == 1
-		return "#{pids.collect{|pid| $pl[pid].name}.join{" and "}}#{verb ? " are" : ""}" if pids.length == 2
-		return "#{pids[0...-1].collect{|pid| $pl[pid].name}.join(", ")}, and #{$pl[pids[-1]].name}#{verb ? " are" : ""}"
 	end
 
 	def knowledge_markers(pid, position, colorhash)
@@ -142,7 +114,7 @@ class BotMM
 		case phase
 		when 1
 			card = 44 # benefit of the doubt
-			total = (all_players.length + 1) / 2
+			total = (turn_order.length + 1) / 2
 		when 2
 			card = 45 # reliable
 			total = 2
@@ -209,7 +181,7 @@ class BotMM
 	end
 
 	def status
-		plist = all_players
+		plist = turn_order
 		num = plist.length
 		res = $conn.query("SELECT round_num, phase_num, viewer, viewee, view_pos FROM games WHERE gid = #{@gid}")
 		return nil unless row = res.fetch_row
@@ -352,7 +324,7 @@ class BotMM
 		return unless row = res.fetch_row
 		row.collect!{|piece| piece == nil ? nil : piece.to_i}
 		(round_num, phase_num, viewer, viewee, view_pos) = row
-		plist = all_players
+		plist = turn_order
 		num = plist.length
 		if (round_num == 1)
 			phase_num += 1
@@ -422,7 +394,7 @@ class BotMM
 				$wi.post(thread, status)
 				next
 			end
-			next unless actor = $pl.get_player(action[0], all_players, verbose)
+			next unless actor = $pl.get_player(action[0], turn_order, verbose)
 			next unless actor == viewer
 			case action[1]
 			when "honest"
@@ -483,7 +455,7 @@ class BotMM
 			if (match = item[:subject].match(pattern))
 				$wi.get_geekmail(item[:id])
 				next unless ($pl.get_player(match[2], nil, verbose) == viewee)
-				next unless actor = $pl.get_player(item[:from], all_players, verbose)
+				next unless actor = $pl.get_player(item[:from], turn_order, verbose)
 				if (match[1].downcase == "punch")
 					vote(actor, false)
 					puts "#{$pl[actor].name} punches #{$pl[viewee].name}"
@@ -515,7 +487,7 @@ class BotMM
 	end
 
 	def check_votes
-		plist = all_players
+		plist = turn_order
 		num = plist.length
 		res = $conn.query("SELECT round_num, phase_num, viewee FROM games WHERE gid = #{@gid}")
 		return unless row = res.fetch_row
