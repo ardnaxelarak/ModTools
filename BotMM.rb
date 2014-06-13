@@ -158,14 +158,14 @@ class BotMM < Game
 			end
 		end
 		if (total - new_taken.length == 0)
-			$conn.query("UPDATE player_cards SET role = 47 WHERE gid = #{@gid} AND role = #{current}")
+			$conn.query("UPDATE player_cards SET card = 47 WHERE gid = #{@gid} AND card = #{current}")
 			$conn.query("UPDATE games SET round_num = round_num + 1 WHERE gid = #{@gid}")
 			message = "#{name_list(cur_left)} automatically become#{cur_left.length > 1 ? "" : "s"} Punched."
 			$wi.post(thread, "[color=#008800]#{message}[/color]")
 			return nil
 		end
 		if (total - new_taken.length == cur_left.length)
-			$conn.query("UPDATE player_cards SET role = #{new} WHERE gid = #{@gid} AND role = #{current}")
+			$conn.query("UPDATE player_cards SET card = #{new} WHERE gid = #{@gid} AND card = #{current}")
 			$conn.query("UPDATE games SET round_num = round_num + 1 WHERE gid = #{@gid}")
 			message = "#{name_list(cur_left)} automatically receive#{cur_left.length > 1 ? "" : "s"} a #{card_name} card."
 			$wi.post(thread, "[color=#008800]#{message}[/color]")
@@ -206,7 +206,7 @@ class BotMM < Game
 			message << "\n#{cards} Benefit of the Doubt card(s) remain"
 		elsif (round_num == 3)
 			message << "\nSkirmish-CM: #{$pl[viewee]}"
-			cards = num_remaining(1)
+			cards = num_remaining(2)
 			message << "\n#{cards} Reliable card(s) remain"
 		elsif (round_num == 4)
 			message << "\nSkirmish-CM: #{$pl[viewee]}"
@@ -409,17 +409,17 @@ class BotMM < Game
 				end
 			when "left"
 				unless (view_pos)
-					choose(viewer, viewee, 3)
+					choose(3)
 					puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[3]} card" if verbose
 				end
 			when "middle"
 				unless (view_pos)
-					choose(viewer, viewee, 2)
+					choose(2)
 					puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[2]} card" if verbose
 				end
 			when "right"
 				unless (view_pos)
-					choose(viewer, viewee, 1)
+					choose(1)
 					puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[1]} card" if verbose
 				end
 			end
@@ -475,7 +475,7 @@ class BotMM < Game
 		next_step
 	end
 
-	def choose(viewer, viewee, view_pos)
+	def choose(view_pos)
 		$conn.query("UPDATE games SET view_pos = #{view_pos} WHERE gid = #{@gid}")
 		send_view
 		message = status
@@ -520,5 +520,19 @@ class BotMM < Game
 		$wi.post(thread, text)
 		$conn.query("UPDATE games SET viewee = NULL WHERE gid = #{@gid}")
 		next_step
+	end
+
+	def replace(oldid, newid)
+		$conn.query("UPDATE game_players SET pid = #{newid} WHERE gid = #{@gid} AND pid = #{oldid}")
+		$conn.query("UPDATE turn_order SET pid = #{newid} WHERE gid = #{@gid} AND pid = #{oldid}")
+		$conn.query("UPDATE player_cards SET pid = #{newid} WHERE gid = #{@gid} AND pid = #{oldid}")
+		$conn.query("UPDATE player_roles SET pid = #{newid} WHERE gid = #{@gid} AND pid = #{oldid}")
+		$conn.query("UPDATE role_cards SET pid = #{newid} WHERE gid = #{@gid} AND pid = #{oldid}")
+		$conn.query("UPDATE role_views SET pid = #{newid} WHERE gid = #{@gid} AND pid = #{oldid}")
+		$conn.query("UPDATE role_views SET viewer = #{newid} WHERE gid = #{@gid} AND viewer = #{oldid}")
+		res = $conn.query("SELECT round_num, phase_num FROM games WHERE gid = #{@gid}")
+		return unless row = res.fetch_row
+		(round_num, phase_num) = row
+		$conn.query("DELETE FROM binary_votes WHERE gid = #{@gid} AND round_num = #{round_num} AND phase_num = #{phase_num} AND pid = #{oldid}")
 	end
 end

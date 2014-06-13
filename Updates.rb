@@ -45,9 +45,10 @@ def check_others
 		$wi.send_geekmail(username, subject, message)
 		$conn.query("DELETE FROM player_messages WHERE id = #{m_id}")
 	end
-	res = $conn.query("SELECT gid, signup_id, t.short_name, game_index, g.name FROM games g LEFT JOIN game_types t ON g.tid = t.tid WHERE g.signup_modified AND g.signup_id IS NOT NULL")
+	res = $conn.query("SELECT gid, status, signup_id, t.short_name, game_index, g.name FROM games g LEFT JOIN game_types t ON g.tid = t.tid WHERE g.signup_modified AND g.signup_id IS NOT NULL")
 	for row in res
-		(gid, article_id, tsn, gind, name) = row
+		(gid, status, article_id, tsn, gind, name) = row
+		status = status.to_i
 		puts "Updating player list for #{tsn} ##{gind}: #{name}"
 		content = "[color=#008800]"
 		content << "Player list according to ModKiwi:"
@@ -57,9 +58,13 @@ def check_others
 			content << "\n#{line[0]}"
 		end
 		content << "\n\n#{num_rows} players are signed up."
-		content << "\n\nTo sign up for this game, post [b]signup[/b] in bold.\n"
-		content << "To remove yourself from this game, post [b]remove[/b] in bold.\n"
-		content << "You can also sign up at http://modkiwi.no-ip.biz/game/#{gid}"
+		if (status == 2)
+			content << "\n\nTo sign up for this game, post [b]signup[/b] in bold.\n"
+			content << "To remove yourself from this game, post [b]remove[/b] in bold.\n"
+			content << "You can also sign up at http://modkiwi.no-ip.biz/game/#{gid}"
+		else
+			content << "You can view this game online at http://modkiwi.no-ip.biz/game/#{gid}"
+		end
 		content << "[/color]"
 		$wi.edit_article(article_id, "Signup List", content);
 		$conn.query("UPDATE games SET signup_modified = FALSE WHERE gid = #{gid}")

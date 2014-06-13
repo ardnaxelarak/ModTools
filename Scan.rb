@@ -4,6 +4,16 @@ require_relative 'Setup'
 require_relative 'Room'
 require_relative 'Game'
 
+def action_list(list, actions)
+	newlist = list.collect{|piece| "(?:#{piece.gsub("%p", "([^ ,]+(?: ?[^ ,]+))")})"}
+	pat = Regexp.new("(#{newlist.join("|")})", Regexp::IGNORECASE)
+	ret = []
+	for thing in list
+		ret += thing.scan(pat).collect{|piece| piece.select{|each| each}}
+	end
+	return ret
+end
+
 def scan_actions(list)
 	return if list.length <= 0
 	actions = []
