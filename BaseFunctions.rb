@@ -1,3 +1,5 @@
+require_relative 'Constants'
+
 def close_connections
 	$wi.stop
 	$conn.close
