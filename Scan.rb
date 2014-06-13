@@ -105,14 +105,14 @@ def scan_signups(gid, verbose = false, only_new = true)
 	for action in actions
 		case action[1]
 		when :signup
-			puts "#{action[0]} has signed up for #{g.name}"
+			puts "#{action[0]} has signed up for #{g.name}" if verbose
 			if (plist.include?(action[0].downcase))
 				remove -= [action[0]]
 			else
 				add.push(action[0])
 			end
 		when :remove
-			puts "#{action[0]} has removed from #{g.name}"
+			puts "#{action[0]} has removed from #{g.name}" if verbose
 			if (plist.include?(action[0].downcase))
 				remove.push(action[0])
 			else

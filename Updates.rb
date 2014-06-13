@@ -36,12 +36,12 @@ def check_signups
 	end
 end
 
-def check_others
+def check_others(verbose = false)
 	check_mail(true)
 	res = $conn.query("SELECT m.id, p.username, CONCAT(t.short_name, ' #', g.game_index, ': ', g.name) AS subject, message FROM player_messages m JOIN players p ON m.pid = p.pid JOIN games g ON m.gid = g.gid JOIN game_types t ON g.tid = t.tid")
 	for row in res
 		(m_id, username, subject, message) = row
-		puts "Sending message to #{username} in #{subject}"
+		puts "Sending message to #{username} in #{subject}" if verbose
 		$wi.send_geekmail(username, subject, message)
 		$conn.query("DELETE FROM player_messages WHERE id = #{m_id}")
 	end
@@ -49,7 +49,7 @@ def check_others
 	for row in res
 		(gid, status, article_id, tsn, gind, name) = row
 		status = status.to_i
-		puts "Updating player list for #{tsn} ##{gind}: #{name}"
+		puts "Updating player list for #{tsn} ##{gind}: #{name}" if verbose
 		content = "[color=#008800]"
 		content << "Player list according to ModKiwi:"
 		pres = $conn.query("SELECT p.username FROM game_players g JOIN players p ON g.pid = p.pid WHERE g.gid = #{gid} ORDER BY p.username")
