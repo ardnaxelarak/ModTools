@@ -9,6 +9,8 @@ class BotMM < Game
 
 	POS_NAMES = ["", "right", "middle", "left"]
 
+	ACTION_HASH = {:left => "left", :right => "right", :middle => "middle|center", :honest => "honest", :infiltrator => "infiltrator", :status => "status", :check => "%p checks? %p"}
+
 	def initialize(gid)
 		super(gid)
 	end
@@ -21,21 +23,21 @@ class BotMM < Game
 		end
 		list.shuffle!
 		$conn.query("INSERT INTO turn_order (gid, pid) VALUES #{list.collect{|pid| "(#{@gid}, #{pid})"}.join(", ")}")
-		$conn.query("INSERT INTO player_cards (gid, pid, card) VALUES #{list.collect{|pid| "(#{@gid}, #{pid}, 48)"}.join(", ")}")
+		$conn.query("INSERT INTO player_cards (gid, pid, card) VALUES #{list.collect{|pid| "(#{@gid}, #{pid}, #{Constants::CREWMEMBER})"}.join(", ")}")
 		num = list.length
 		bad = (num - 1) / 2
 		good = num - bad
-		roles = [42] * good + [43] * bad
+		roles = [Constants::HONEST] * good + [Constants::INFILTRATOR] * bad
 		roles.shuffle!
 		nums = (0...num).collect{|i| i}
 		$conn.query("INSERT INTO player_roles (gid, pid, role) VALUES #{nums.collect{|ind| "(#{@gid}, #{list[ind]}, #{roles[ind]})"}.join(", ")}")
-		badmessage = "[b]You are an Infiltrator.[/b]\nThe infilitrators are #{name_list(nums.select{|ind| roles[ind] == 43}.collect{|ind| list[ind]})}."
+		badmessage = "[b]You are an Infiltrator.[/b]\nThe infilitrators are #{name_list(nums.select{|ind| roles[ind] == Constants::INFILTRATOR}.collect{|ind| list[ind]})}."
 		goodmessage = "[b]You are Honest.[/b]"
-		$conn.query("INSERT INTO player_messages (pid, gid, message) VALUES #{nums.collect{|ind| "(#{list[ind]}, #{@gid}, #{escape(roles[ind] == 42 ? goodmessage : badmessage)})"}.join(", ")}")
+		$conn.query("INSERT INTO player_messages (pid, gid, message) VALUES #{nums.collect{|ind| "(#{list[ind]}, #{@gid}, #{escape(roles[ind] == Constants::HONEST ? goodmessage : badmessage)})"}.join(", ")}")
 
 		cards = []
 		for i in nums
-			cards[i] = [42, 43, roles[i]]
+			cards[i] = [Constants::HONEST, Constants::INFILTRATOR, roles[i]]
 			cards[i].shuffle!
 			$conn.query("INSERT INTO role_cards (gid, pid, position, role) VALUES #{(0...3).collect{|j| "(#{@gid}, #{list[i]}, #{j + 1}, #{cards[i][j]})"}.join(", ")}")
 		end
@@ -43,14 +45,14 @@ class BotMM < Game
 		for pid in list
 			modmessage << "#{$pl[pid].name}\n"
 		end
-		modmessage << "\n\nInfiltrators are #{name_list(nums.select{|ind| roles[ind] == 43}.collect{|ind| list[ind]})}."
+		modmessage << "\n\nInfiltrators are #{name_list(nums.select{|ind| roles[ind] == Constants::INFILTRATOR}.collect{|ind| list[ind]})}."
 		modmessage << "\n\n[c]R M L Cards"
 		for i in nums
-			modmessage << "\n#{cards[i].collect{|rid| rid == 42 ? "H" : "I"}.join(" ")} #{$pl[list[i]].name}"
+			modmessage << "\n#{cards[i].collect{|rid| rid == Constants::HONEST ? "H" : "I"}.join(" ")} #{$pl[list[i]].name}"
 		end
 		modmessage << "[/c]"
 		$conn.query("INSERT INTO player_messages (pid, gid, message) VALUES #{mod_list.collect{|pid| "(#{pid}, #{@gid}, #{escape(modmessage)})"}.join(", ")}")
-		$conn.query("UPDATE games SET status = 3 WHERE gid = #{@gid}")
+		$conn.query("UPDATE games SET status = #{Constants::ACTIVE} WHERE gid = #{@gid}")
 		$wi.post(thread, "[color=purple][b]Roles have been sent out. Please await further instruction.[/b][/color]")
 		puts "Started game #{@gid}"
 	end
@@ -113,13 +115,13 @@ class BotMM < Game
 	def num_remaining(phase)
 		case phase
 		when 1
-			card = 44 # benefit of the doubt
+			card = Constants::BENEFIT
 			total = (turn_order.length + 1) / 2
 		when 2
-			card = 45 # reliable
+			card = Constants::RELIABLE
 			total = 2
 		when 3
-			card = 46 # captain
+			card = Constants::CAPTAIN
 			total = 1
 		end
 		row = $conn.query("SELECT count(*) FROM player_cards WHERE gid = #{@gid} AND card = #{card}").fetch_row
@@ -130,18 +132,18 @@ class BotMM < Game
 		num = plist.length
 		case phase
 		when 1
-			current = 48
-			new = 44
+			current = Constants::CREWMEMBER
+			new = Constants::BENEFIT
 			total = (num + 1) / 2
 			card_name = "Benefit of the Doubt"
 		when 2
-			current = 44
-			new = 45
+			current = Constants::BENEFIT
+			new = Constants::RELIABLE
 			total = 2
 			card_name = "Reliable"
 		when 3
-			current = 45
-			new = 46
+			current = Constants::RELIABLE
+			new = Constants::CAPTAIN
 			total = 1
 			card_name = "Captain"
 		end
@@ -158,7 +160,7 @@ class BotMM < Game
 			end
 		end
 		if (total - new_taken.length == 0)
-			$conn.query("UPDATE player_cards SET card = 47 WHERE gid = #{@gid} AND card = #{current}")
+			$conn.query("UPDATE player_cards SET card = #{Constants::PUNCHED} WHERE gid = #{@gid} AND card = #{current}")
 			$conn.query("UPDATE games SET round_num = round_num + 1 WHERE gid = #{@gid}")
 			message = "#{name_list(cur_left)} automatically become#{cur_left.length > 1 ? "" : "s"} Punched."
 			$wi.post(thread, "[color=#008800]#{message}[/color]")
@@ -311,7 +313,7 @@ class BotMM < Game
 		viewerloyalty = viewerloyalty.to_i if viewerloyalty
 
 		message = "#{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card says [b]#{view}[/b].\n"
-		if (viewerloyalty == 42)
+		if (viewerloyalty == Constants::HONEST)
 			message << "Since you are Honest, you must tell the truth.\nPlease post [b]#{view}[/b] in the thread."
 		else
 			message << "Please post either [b]Honest[/b] or [b]Infiltrator[/b] in the thread according to the claim you wish to make."
@@ -388,56 +390,42 @@ class BotMM < Game
 		list = $wi.get_posts(thread, last)
 		return if list.length <= 0
 		$conn.query("UPDATE games SET last_scanned = #{list.last[:id]} WHERE gid = #{@gid}")
-		actions = scan_actions(list)
+		actions = action_list(list, ACTION_HASH)
 		for action in actions
-			if (action[1] == "status")
+			if (action[1] == :status)
 				$wi.post(thread, status)
 				next
 			end
 			next unless actor = $pl.get_player(action[0], turn_order, verbose)
 			next unless actor == viewer
 			case action[1]
-			when "honest"
+			when :honest
 				if (view_pos)
 					viewed(viewer, viewee, view_pos, true)
 					puts "#{$pl[viewer].name} viewed #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card as Honest" if verbose
 				end
-			when "infiltrator"
+			when :infiltrator
 				if (view_pos)
 					viewed(viewer, viewee, view_pos, false)
 					puts "#{$pl[viewer].name} viewed #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card as Infiltrator" if verbose
 				end
-			when "left"
+			when :left
 				unless (view_pos)
 					choose(3)
 					puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[3]} card" if verbose
 				end
-			when "middle"
+			when :middle
 				unless (view_pos)
 					choose(2)
 					puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[2]} card" if verbose
 				end
-			when "right"
+			when :right
 				unless (view_pos)
 					choose(1)
 					puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[1]} card" if verbose
 				end
 			end
 		end
-	end
-
-	def scan_actions(list)
-		return if list.length <= 0
-		actions = []
-		pattern = /(honest|infiltrator|left|middle|right|status)/i
-		for item in list
-			for post in item[:posts]
-				for action in post.scan(pattern)
-					actions.push([item[:user], action[0].downcase])
-				end
-			end
-		end
-		actions
 	end
 
 	def check_MM_mail(verbose = false)
@@ -470,7 +458,7 @@ class BotMM < Game
 	end
 
 	def viewed(viewer, viewee, view_pos, honest)
-		$conn.query("INSERT INTO role_views (gid, pid, position, viewer, role) VALUES (#{@gid}, #{viewee}, #{view_pos}, #{viewer}, #{honest ? 42 : 43})")
+		$conn.query("INSERT INTO role_views (gid, pid, position, viewer, role) VALUES (#{@gid}, #{viewee}, #{view_pos}, #{viewer}, #{honest ? Constants::HONEST : Constants::INFILTRATOR})")
 		$wi.post(thread, "[color=#008800]#{$pl[viewer].name} claims #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card says [b]#{honest ? "Honest" : "Infiltrator"}[/b][/color]")
 		next_step
 	end
@@ -514,7 +502,7 @@ class BotMM < Game
 			$conn.query("UPDATE player_cards SET card = #{42 + round_num} WHERE gid = #{@gid} AND pid = #{viewee}")
 		else
 			text << "\n#{$pl[viewee]} has been Punched."
-			$conn.query("UPDATE player_cards SET card = 47 WHERE gid = #{@gid} AND pid = #{viewee}")
+			$conn.query("UPDATE player_cards SET card = #{Constants::PUNCHED} WHERE gid = #{@gid} AND pid = #{viewee}")
 		end
 		text << "[/b][/color]"
 		$wi.post(thread, text)
