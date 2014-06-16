@@ -491,7 +491,7 @@ class BotMM < Game
 						$conn.query("UPDATE games SET round_num = #{round_num + 1}, phase_num = #{choice}, viewer = NULL, viewee = NULL, view_pos = NULL WHERE gid = #{@gid}")
 						next_step
 					else
-						$wi.post(thread, "[q=\"#{action[0]}\"]#{action[2]}[/q]\n[color=#008800]This choice is invalid.[/color]"
+						$wi.post(thread, "[q=\"#{action[0]}\"]#{action[2]}[/q]\n[color=#008800]This choice is invalid.[/color]")
 						next
 					end
 				end
