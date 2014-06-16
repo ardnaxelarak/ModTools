@@ -472,7 +472,7 @@ class BotMM < Game
 						$conn.query("UPDATE games SET viewer = #{viewer}, viewee = #{viewee} WHERE gid = #{@gid}")
 						$wi.post(thread, status)
 					else
-						$wi.post(thread, "[q=\"#{action[0]}\"]#{action[2]}[/q]\n[color=#008800]This choice is invalid.[/color]"
+						$wi.post(thread, "[q=\"#{action[0]}\"]#{action[2]}[/q]\n[color=#008800]This choice is invalid.[/color]")
 						next
 					end
 				elsif (action[1] == :choose && viewee)
