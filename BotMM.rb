@@ -326,7 +326,7 @@ class BotMM < Game
 			elsif (viewee)
 				message << "\n\n#{$pl[phase_num].name} is deciding who should be given cockpit access. Please post [b]choose [i]&lt;player&gt;[/i][/b] in the thread."
 			else
-				message << "\n\n#{$pl[phase_num].name} is choosing a player to view another player's card. Please post [b][i]&lt;player&gt;[/i] checks [i]&lt;player&gt;[/i][b] in the thread. You may not choose the Captain or a player with cockpit access."
+				message << "\n\n#{$pl[phase_num].name} is choosing a player to view another player's card. Please post [b][i]&lt;player&gt;[/i] checks [i]&lt;player&gt;[/i][/b] in the thread. You may not choose the Captain or a player with cockpit access."
 			end
 		end
 		return message
@@ -530,12 +530,12 @@ class BotMM < Game
 
 	def check_end(round_num)
 		case round_num
-		when 3
+		when 4
 			ren = $conn.query("SELECT c.pid FROM player_cards c LEFT JOIN player_roles r ON c.pid = r.pid WHERE c.card = #{Constants::RELIABLE} AND r.role = #{Constants::HONEST}")
 			return false if ren.num_rows > 0
 			end_game(false, "All Reliable players are infiltrators.")
 			return true
-		when 4
+		when 5
 			ren = $conn.query("SELECT c.pid, r.role FROM player_cards c LEFT JOIN player_roles r ON c.pid = r.pid WHERE c.card = #{Constants::CAPTAIN}")
 			return false unless row = ren.fetch_row
 			(pid, role) = row
