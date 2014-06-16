@@ -8,7 +8,9 @@ module Constants
 	BENEFIT = 44
 	RELIABLE = 45
 	CAPTAIN = 46
-	CREWMEMBER = 47
+	PUNCHED = 47
+	CREWMEMBER = 48
+	COCKPIT = 49
 
 	# Status Codes
 	BEGINNING = 1

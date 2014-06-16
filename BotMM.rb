@@ -8,8 +8,9 @@ class BotMM < Game
 	attr_accessor :gid, :name, :thread, :hidden
 
 	POS_NAMES = ["", "right", "middle", "left"]
+	COLOR_LIST = ["red", "green", "blue", "orange", "brown", "purple", "black"]
 
-	ACTION_HASH = {:left => "left", :right => "right", :middle => "middle|center", :honest => "honest", :infiltrator => "infiltrator", :status => "status", :check => "%p checks? %p"}
+	ACTION_HASH = {:left => "left", :right => "right", :middle => "middle|center", :honest => "honest", :infiltrator => "infiltrator", :status => "status", :check => "%p checks? %p", :choose => "choose %p"}
 
 	def initialize(gid)
 		super(gid)
@@ -92,10 +93,6 @@ class BotMM < Game
 		pos = (pos + 2) % num
 		return plist[pos] if can_view(plist[pos], plist[position])
 		return nil
-	end
-
-	def color_list
-		return ["red", "green", "blue", "orange", "brown", "purple", "black"]
 	end
 
 	def knowledge_markers(pid, position, colorhash)
@@ -182,6 +179,15 @@ class BotMM < Game
 		return -1
 	end
 
+	def valid_lookers
+		res = $conn.query("SELECT pid FROM player_cards WHERE gid = #{@gid} AND card NOT IN (#{Constants::CAPTAIN}, #{Constants::COCKPIT})")
+		ret = []
+		for row in res
+			ret.push(row[0].to_i) if row[0]
+		end
+		return ret
+	end
+
 	def status
 		plist = turn_order
 		num = plist.length
@@ -195,7 +201,7 @@ class BotMM < Game
 			card_hash[row[0].to_i] = row[1]
 		end
 		message = "[u][b]Current Table[/b][/u]\n"
-		message << "Phase #{round_num - 1}"
+		message << "Phase #{round_num >= 5 ? 4 : round_num - 1}"
 		if (round_num == 1)
 			if (viewer && viewee && view_pos)
 				message << "\n#{$pl[viewer].name} is looking at #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card."
@@ -212,6 +218,8 @@ class BotMM < Game
 			message << "\n#{cards} Reliable card(s) remain"
 		elsif (round_num == 4)
 			message << "\nSkirmish-CM: #{$pl[viewee]}"
+		elsif (round_num >= 5)
+			message << "\nActive Player: #{$pl[phase_num]}"
 		end
 		if (round_num >= 2 && round_num <= 4)
 			if (viewer && viewee && view_pos)
@@ -221,15 +229,26 @@ class BotMM < Game
 			elsif (viewee)
 				message << "\nVoting to punch or protect #{$pl[viewee].name}."
 			end
+		elsif (round_num >= 5)
+			if (viewer && viewee && view_pos)
+				message << "\n#{$pl[viewer].name} is looking at #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card."
+			elsif (viewer && viewee)
+				message << "\n#{$pl[viewer].name} is deciding which of #{$pl[viewee].name}'s cards to look at."
+			elsif (viewee)
+				message << "\n#{$pl[phase_num].name} is deciding who should be given cockpit access."
+			else
+				message << "\n#{$pl[phase_num].name} is choosing a player to view another player's card."
+			end
 		end
-		colors = color_list
+		colors = COLOR_LIST
 		color_hash = {}
 		for i in 0...num
 			color_hash[plist[i]] = colors[i]
 		end
 
 		cur_turn = -1
-		cur_turn = phase_num if round_num >= 2 && round_num <= 4
+		cur_turn = plist[phase_num] if round_num >= 2 && round_num <= 4
+		cur_turn = phase_num if round_num >= 5
 
 		texts = []
 		marker_hash = num_markers
@@ -238,9 +257,9 @@ class BotMM < Game
 			text << card_hash[plist[i]]
 			text << "\n"
 			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]"
-			text << "[b]" if i == cur_turn
+			text << "[b]" if plist[i] == cur_turn
 			text << "#{i + 1}. #{$pl[plist[i]].name} (#{marker_hash[plist[i]]})"
-			text << "[/b]" if i == cur_turn
+			text << "[/b]" if plist[i] == cur_turn
 			text << "[c] [/c][/bgcolor][/color]"
 			text << "\n"
 			text << "[c][color=white][b][bgcolor=gray]  R  [/bgcolor] [bgcolor=gray]  M  [/bgcolor] [bgcolor=gray]  L  [/bgcolor][/b][/color][/c]"
@@ -262,9 +281,9 @@ class BotMM < Game
 			text << "[c][color=white][b][bgcolor=gray]  L  [/bgcolor] [bgcolor=gray]  M  [/bgcolor] [bgcolor=gray]  R  [/bgcolor][/b][/color][/c]"
 			text << "\n"
 			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]"
-			text << "[b]" if i == cur_turn
+			text << "[b]" if plist[i] == cur_turn
 			text << "#{i + 1}. #{$pl[plist[i]].name} (#{marker_hash[plist[i]]})"
-			text << "[/b]" if i == cur_turn
+			text << "[/b]" if plist[i] == cur_turn
 			text << "[c] [/c][/bgcolor][/color]"
 			text << "\n"
 			text << card_hash[plist[i]]
@@ -299,6 +318,16 @@ class BotMM < Game
 			end
 		elsif (round_num == 1 && viewer && viewee && view_pos)
 			message << "\n\n#{$pl[viewer].name} has been sent #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card.\nPlease post either [b]Honest[/b] or [b]Infiltrator[/b] in the thread.\n(You must tell the truth if you are Honest)"
+		elsif (round_num >= 5)
+			if (viewee && viewer && view_pos)
+				message << "\n\n#{$pl[viewer].name} has been sent #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card.\nPlease post either [b]Honest[/b] or [b]Infiltrator[/b] in the thread.\n(You must tell the truth if you are Honest)"
+			elsif (viewee && viewer)
+				message << "\n\n#{$pl[viewer].name} is deciding which of #{$pl[viewee].name}'s cards to view.\nPlease post [b]left[/b], [b]middle[/b], or [b]right[/b] in the thread."
+			elsif (viewee)
+				message << "\n\n#{$pl[viewer].name} is deciding who should be given cockpit access. Please post [b]choose [i]&lt;player&gt;[/i][/b] in the thread."
+			else
+				message << "\n\n#{$pl[viewer].name} is choosing a player to view another player's card. Please post [b][i]&lt;player&gt;[/i] checks [i]&lt;player&gt;[/i][b] in the thread. You may not choose the Captain or a player with cockpit access."
+			end
 		end
 		return message
 	end
@@ -354,7 +383,7 @@ class BotMM < Game
 				$wi.post(thread, message)
 			else
 				unless (pos = get_next_pos(plist, phase_num, round_num - 1))
-					next_step
+					next_step unless check_end(round_num + 1) # add one because it was increased in the database
 					return
 				end
 				return if pos == -1
@@ -372,6 +401,10 @@ class BotMM < Game
 					next_step
 				end
 			end
+		elsif (round_num >= 5 + num / 2)
+			end_game(true, "All honest players have been given cockpit access.")
+		elsif (round_num >= 5)
+			$wi.post(thread, status)
 		end
 	end
 
@@ -397,32 +430,70 @@ class BotMM < Game
 				next
 			end
 			next unless actor = $pl.get_player(action[0], turn_order, verbose)
-			next unless actor == viewer
-			case action[1]
-			when :honest
-				if (view_pos)
-					viewed(viewer, viewee, view_pos, true)
-					puts "#{$pl[viewer].name} viewed #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card as Honest" if verbose
+			if (viewer && viewee)
+				next unless actor == viewer
+				case action[1]
+				when :honest
+					if (view_pos)
+						viewed(viewer, viewee, view_pos, true)
+						puts "#{$pl[viewer].name} viewed #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card as Honest" if verbose
+					end
+				when :infiltrator
+					if (view_pos)
+						viewed(viewer, viewee, view_pos, false)
+						puts "#{$pl[viewer].name} viewed #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card as Infiltrator" if verbose
+					end
+				when :left
+					unless (view_pos)
+						choose(3)
+						puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[3]} card" if verbose
+					end
+				when :middle
+					unless (view_pos)
+						choose(2)
+						puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[2]} card" if verbose
+					end
+				when :right
+					unless (view_pos)
+						choose(1)
+						puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[1]} card" if verbose
+					end
 				end
-			when :infiltrator
-				if (view_pos)
-					viewed(viewer, viewee, view_pos, false)
-					puts "#{$pl[viewer].name} viewed #{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card as Infiltrator" if verbose
-				end
-			when :left
-				unless (view_pos)
-					choose(3)
-					puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[3]} card" if verbose
-				end
-			when :middle
-				unless (view_pos)
-					choose(2)
-					puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[2]} card" if verbose
-				end
-			when :right
-				unless (view_pos)
-					choose(1)
-					puts "#{$pl[viewer].name} has chosen to view #{$pl[viewee].name}'s #{POS_NAMES[1]} card" if verbose
+			else
+				next unless round_num >= 5
+				next unless actor == phase_num
+				if (action[1] == :check && !viewee)
+					next unless action.length >= 5
+					vl = valid_lookers
+					viewer = $pl.get_player(action[3], vl, verbose)
+					viewee = $pl.get_player(action[4], vl, verbose)
+					if (viewer && viewee)
+						$wi.post(thread, "[color=#008800]#{$pl[phase_num].name} has chosen for #{$pl[viewer].name} to view one of #{$pl[viewee].name}'s cards.[/color]")
+						$conn.query("UPDATE games SET viewer = #{viewer}, viewee = #{viewee} WHERE gid = #{@gid}")
+						$wi.post(thread, status)
+					else
+						$wi.post(thread, "[q=\"#{action[0]}\"]#{action[2]}[/q]\n[color=#008800]This choice is invalid.[/color]"
+						next
+					end
+				elsif (action[1] == :choose && viewee)
+					vl = valid_lookers
+					choice = $pl.get_player(action[3], vl, verbose)
+					if (choice)
+						ren = $conn.query("SELECT r.role FROM player_roles r WHERE r.pid = #{choice} AND r.gid = #{@gid}")
+						return false unless row = ren.fetch_row
+						role = row[0].to_i
+						if (role == Constants::INFILTRATOR)
+							end_game(false, "#{$pl[choice].name} is an infiltrator.")
+							return true
+						end
+						$wi.post(thread, "[color=#008800]#{$pl[choice].name} is Honest.[/color]")
+						$conn.query("UPDATE player_cards SET card = #{Constants::COCKPIT} WHERE gid = #{@gid} AND pid = #{choice}")
+						$conn.query("UPDATE games SET round_num = #{round_num + 1}, phase_num = #{choice}, viewer = NULL, viewee = NULL, view_pos = NULL WHERE gid = #{@gid}")
+						next_step
+					else
+						$wi.post(thread, "[q=\"#{action[0]}\"]#{action[2]}[/q]\n[color=#008800]This choice is invalid.[/color]"
+						next
+					end
 				end
 			end
 		end
@@ -455,6 +526,42 @@ class BotMM < Game
 			end
 		end
 		return ret
+	end
+
+	def check_end(round_num)
+		case round_num
+		when 3
+			ren = $conn.query("SELECT c.pid FROM player_cards c LEFT JOIN player_roles r ON c.pid = r.pid WHERE c.card = #{Constants::RELIABLE} AND r.role = #{Constants::HONEST}")
+			return false if ren.num_rows > 0
+			end_game(false, "All Reliable players are infiltrators.")
+			return true
+		when 4
+			ren = $conn.query("SELECT c.pid, r.role FROM player_cards c LEFT JOIN player_roles r ON c.pid = r.pid WHERE c.card = #{Constants::CAPTAIN}")
+			return false unless row = ren.fetch_row
+			(pid, role) = row
+			pid = pid.to_i if pid
+			role = role.to_i if role
+			if (role == Constants::INFILTRATOR)
+				end_game(false, "#{$pl[pid].name} is an infiltrator.")
+				return true
+			end
+			$wi.post(thread, "[color=#008800]#{$pl[pid].name} is Honest.[/color]")
+			$conn.query("UPDATE games SET phase_num = #{pid}, viewer = NULL, viewee = NULL, view_pos = NULL WHERE gid = #{@gid}")
+			return false
+		end
+		false
+	end
+
+	def end_game(good_win, message = nil)
+		text = ""
+		text << "[color=#008800]#{message}[/color]\n\n" if message
+		if (good_win)
+			text << "[color=purple][b]Honest Crewmembers win![/b][/color]"
+		else
+			text << "[color=purple][b]Infiltrators win![/b][/color]"
+		end
+		$wi.post(thread, text)
+		$conn.query("UPDATE games SET status = #{Constants::ENDED} WHERE gid = #{gid}")
 	end
 
 	def viewed(viewer, viewee, view_pos, honest)
