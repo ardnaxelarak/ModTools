@@ -324,9 +324,9 @@ class BotMM < Game
 			elsif (viewee && viewer)
 				message << "\n\n#{$pl[viewer].name} is deciding which of #{$pl[viewee].name}'s cards to view.\nPlease post [b]left[/b], [b]middle[/b], or [b]right[/b] in the thread."
 			elsif (viewee)
-				message << "\n\n#{$pl[viewer].name} is deciding who should be given cockpit access. Please post [b]choose [i]&lt;player&gt;[/i][/b] in the thread."
+				message << "\n\n#{$pl[phase_num].name} is deciding who should be given cockpit access. Please post [b]choose [i]&lt;player&gt;[/i][/b] in the thread."
 			else
-				message << "\n\n#{$pl[viewer].name} is choosing a player to view another player's card. Please post [b][i]&lt;player&gt;[/i] checks [i]&lt;player&gt;[/i][b] in the thread. You may not choose the Captain or a player with cockpit access."
+				message << "\n\n#{$pl[phase_num].name} is choosing a player to view another player's card. Please post [b][i]&lt;player&gt;[/i] checks [i]&lt;player&gt;[/i][b] in the thread. You may not choose the Captain or a player with cockpit access."
 			end
 		end
 		return message
