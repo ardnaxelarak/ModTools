@@ -1,11 +1,29 @@
-require 'digest/sha2'
-require 'securerandom'
 require_relative 'Setup'
 require_relative 'Room'
 require_relative 'Game'
 
+def action_list(list, action_hash)
+	return [] if list.length <= 0
+	return [] if action_hash.length <= 0
+	newhash = {}
+	action_hash.each do |key, piece|
+		regex = piece.gsub("%p", "([^ ,]+(?: ?[^ ,]+))")
+		newhash[key] = Regexp.new("(#{regex})", Regexp::IGNORECASE)
+	end
+	ret = []
+	for item in list
+		next if item[:user] == "modkiwi"
+		for post in item[:posts]
+			newhash.each do |key, regex|
+				ret += post.scan(regex).collect{|piece| [item[:user], key] + piece}
+			end
+		end
+	end
+	return ret
+end
+
 def scan_actions(list)
-	return if list.length <= 0
+	return [] if list.length <= 0
 	actions = []
 	pattern = /(lock ?)?(vote|leaderoffer|leaderaccept|revokeoffer|mayor)(?: (?:for )?(\w+))?/i
 	for item in list
@@ -79,31 +97,22 @@ def scan_signups(gid, verbose = false, only_new = true)
 	return if list.length <= 0
 	new_last = list.last[:id]
 
-	actions = []
-	pattern = /(signup|remove)/
-	for item in list
-		for post in item[:posts]
-			next if item[:user] == "modkiwi"
-			for action in post.scan(pattern)
-				actions.push([item[:user], action[0].downcase])
-			end
-		end
-	end
+	actions = action_list(list, Constants::SIGNUP_ACTIONS)
 
 	add = []
 	remove = []
 
 	for action in actions
 		case action[1]
-		when "signup"
-			puts "#{action[0]} has signed up for #{g.name}"
+		when :signup
+			puts "#{action[0]} has signed up for #{g.name}" if verbose
 			if (plist.include?(action[0].downcase))
 				remove -= [action[0]]
 			else
 				add.push(action[0])
 			end
-		when "remove"
-			puts "#{action[0]} has removed from #{g.name}"
+		when :remove
+			puts "#{action[0]} has removed from #{g.name}" if verbose
 			if (plist.include?(action[0].downcase))
 				remove.push(action[0])
 			else
