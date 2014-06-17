@@ -103,7 +103,6 @@ def scan_signups(gid, verbose = false, only_new = true)
 	if (acronym)
 		acronym = acronym.upcase.split(" ")
 		acregex = acronym.collect{|word| "(#{word[0]}\\w*)"}.join("\\W+")
-		puts acregex
 		action_hash[:acronym] = acregex
 	end
 
@@ -131,6 +130,7 @@ def scan_signups(gid, verbose = false, only_new = true)
 				add -= [action[0]]
 			end
 		when :acronym
+			puts "#{action[0]} has guessed #{action[2]} in #{g.name}" if verbose
 			guess = action.drop(3).collect{|word| word.upcase}
 			num = 0
 			tot = acronym.length
