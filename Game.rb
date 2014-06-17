@@ -84,4 +84,8 @@ class Game
 			return nil
 		end
 	end
+
+	def escape_quotes(text)
+		return text.gsub("'", "\\'")
+	end
 end
