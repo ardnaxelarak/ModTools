@@ -137,7 +137,7 @@ def scan_signups(gid, verbose = false, only_new = true)
 				num += 1 if acronym[i] == guess[i]
 			end
 			result = "#{num}/#{tot}"
-			guesses.push([action[0], action[2], result)
+			guesses.push([action[0], action[2], result])
 			if (result == tot)
 				$conn.query("UPDATE games SET acronym = NULL WHERE gid = #{gid}")
 			end
