@@ -79,7 +79,7 @@ def scan_room(rid, hidden, only_new = true, verbose = false)
 end
 
 def scan_signups(gid, verbose = false, only_new = true)
-	res = $conn.query("SELECT thread_id, last_scanned, max_players FROM games WHERE gid = #{gid}")
+	res = $conn.query("SELECT thread_id, last_scanned, max_players, acronym FROM games WHERE gid = #{gid}")
 	return unless row = res.fetch_row
 	thread = row[0]
 	if only_new
@@ -89,6 +89,7 @@ def scan_signups(gid, verbose = false, only_new = true)
 	end
 	max_players = row[2]
 	max_players = max_players.to_i if max_players
+	acronym = row[3]
 	g = Game.new(gid)
 	plist = g.all_players
 	plist.collect!{|pid| $pl[pid].name.downcase}
@@ -97,10 +98,20 @@ def scan_signups(gid, verbose = false, only_new = true)
 	return if list.length <= 0
 	new_last = list.last[:id]
 
-	actions = action_list(list, Constants::SIGNUP_ACTIONS)
+	action_hash = Constants::SIGNUP_ACTIONS
+
+	if (acronym)
+		acronym = acronym.upcase.split(" ")
+		acregex = acronym.collect{|word| "(#{word[1]}\w*)"}.join("\W*")
+		action_hash[:acronym] = acregex
+	end
+
+	actions = action_list(list, action_hash)
 
 	add = []
 	remove = []
+
+	guesses = []
 
 	for action in actions
 		case action[1]
@@ -118,6 +129,18 @@ def scan_signups(gid, verbose = false, only_new = true)
 			else
 				add -= [action[0]]
 			end
+		when :acronym
+			guess = action.drop(3).collect{|word| word.upcase}
+			num = 0
+			tot = acronym.length
+			for i in (0...tot)
+				num += 1 if acronym[i] == guess[i]
+			end
+			result = "#{num}/#{tot}"
+			guesses.push([action[0], action[2], result)
+			if (result == tot)
+				$conn.query("UPDATE games SET acronym = NULL WHERE gid = #{gid}")
+			end
 		end
 	end
 
@@ -134,6 +157,9 @@ def scan_signups(gid, verbose = false, only_new = true)
 	else
 		$conn.query("UPDATE games SET last_scanned = #{new_last} WHERE gid = #{gid}")
 	end
+
+	post = guesses.collect{|guess| "[q=\"#{guess[0]}\"][b]#{guess[1]}[/b][/q]\n[color=#008800]#{guess[2]}[/color]"}.join("\n\n")
+	$wi.post(thread, post)
 end
 
 # TODO: Fix this
