@@ -404,6 +404,9 @@ class BotMM < Game
 		elsif (round_num >= 5 + num / 2)
 			end_game(true, "All honest players have been given cockpit access.")
 		elsif (round_num >= 5)
+			if (viewer && viewee && view_pos)
+				$conn.query("UPDATE games SET viewer = NULL, view_pos = NULL WHERE gid = #{@gid}")
+			end
 			$wi.post(thread, status)
 		end
 	end
@@ -415,10 +418,10 @@ class BotMM < Game
 
 	def scan_MM(verbose = false, only_new = true)
 		last = nil
-		res = $conn.query("SELECT last_scanned, viewer, viewee, view_pos FROM games WHERE gid = #{@gid}")
+		res = $conn.query("SELECT last_scanned, phase_num, viewer, viewee, view_pos FROM games WHERE gid = #{@gid}")
 		return unless row = res.fetch_row
 		row.collect!{|piece| piece == nil ? nil : piece.to_i}
-		(last_id, viewer, viewee, view_pos) = row
+		(last_id, phase_num, viewer, viewee, view_pos) = row
 		last = last_id if only_new
 		list = $wi.get_posts(thread, last)
 		return if list.length <= 0
