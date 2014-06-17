@@ -102,7 +102,8 @@ def scan_signups(gid, verbose = false, only_new = true)
 
 	if (acronym)
 		acronym = acronym.upcase.split(" ")
-		acregex = acronym.collect{|word| "(#{word[1]}\w*)"}.join("\W*")
+		acregex = acronym.collect{|word| "(#{word[0]}\\w*)"}.join("\\W+")
+		puts acregex
 		action_hash[:acronym] = acregex
 	end
 
@@ -158,7 +159,7 @@ def scan_signups(gid, verbose = false, only_new = true)
 		$conn.query("UPDATE games SET last_scanned = #{new_last} WHERE gid = #{gid}")
 	end
 
-	post = guesses.collect{|guess| "[q=\"#{guess[0]}\"][b]#{guess[1]}[/b][/q]\n[color=#008800]#{guess[2]}[/color]"}.join("\n\n")
+	post = guesses.collect{|guess| "[q=\"#{guess[0]}\"][b]#{guess[1]}[/b][/q][color=#008800]#{guess[2]}[/color]"}.join("\n\n")
 	$wi.post(thread, post)
 end
 
