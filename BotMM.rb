@@ -195,9 +195,9 @@ class BotMM < Game
 		return ret
 	end
 
-	def update_status(prefix = "")
+	def update_status(prefix = nil)
 		stat = status
-		$wi.post(thread, "#{prefix}\n\n#{stat}")
+		$wi.post(thread, "#{prefix ? "#{prefix}\n\n" : ""}{stat}")
 		$wi.edit_article(@status_id, "Current Status", stat) if @status_id
 	end
 
@@ -271,7 +271,7 @@ class BotMM < Game
 			text << "\n"
 			text << "[color=white][bgcolor=#{colors[i]}][c] [/c]"
 			text << "[b]" if plist[i] == cur_turn
-			text << "#{i + 1}. #{$pl[plist[i]].name} (#{marker_hash[plist[i]]})"
+			text << "#{i + 1}. #{$pl[plist[i]].name} (#{marker_hash[plist[i]] || 4})"
 			text << "[/b]" if plist[i] == cur_turn
 			text << "[c] [/c][/bgcolor][/color]"
 			text << "\n"
