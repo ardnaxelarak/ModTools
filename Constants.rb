@@ -1,6 +1,6 @@
 module Constants
 	# Signups
-	SIGNUP_ACTIONS = {:signup => "signup", :remove => "remove"}
+	SIGNUP_ACTIONS = {:signup => "sign ?-? ?up", :remove => "remove"}
 
 	# Mayday!Mayday!
 	HONEST = 42

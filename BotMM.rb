@@ -72,7 +72,9 @@ class BotMM < Game
 		res = $conn.query("SELECT viewer, count(*) FROM role_views WHERE gid = #{@gid} GROUP BY viewer")
 		hash = {}
 		for row in res
-			hash[row[0].to_i] = 4 - row[1].to_i
+			val = row[1].to_i
+			val = 0 unless val
+			hash[row[0].to_i] = 4 - val
 		end
 		return hash
 	end
