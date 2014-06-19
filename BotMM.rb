@@ -195,6 +195,12 @@ class BotMM < Game
 		return ret
 	end
 
+	def update_status(prefix = "")
+		stat = status
+		$wi.post(thread, "#{prefix}\n\n#{stat}")
+		$wi.edit_article(@status_id, "Current Status", stat) if @status_id
+	end
+
 	def status
 		plist = turn_order
 		num = plist.length
@@ -377,8 +383,7 @@ class BotMM < Game
 				view_pos = 3 - 2 * (phase_num % 2)
 				$conn.query("UPDATE games SET phase_num = #{phase_num}, viewer = #{viewer}, viewee = #{viewee}, view_pos = #{view_pos} WHERE gid = #{@gid}")
 				send_view
-				message = status
-				$wi.post(thread, message)
+				update_status
 			end
 		end
 		if (round_num >= 2 && round_num <= 4)
@@ -386,8 +391,7 @@ class BotMM < Game
 				viewer = nil
 				$conn.query("UPDATE games SET viewer = NULL WHERE gid = #{@gid}")
 				vote(viewee, true)
-				message = status
-				$wi.post(thread, message)
+				update_status
 			else
 				unless (pos = get_next_pos(plist, phase_num, round_num - 1))
 					next_step unless check_end(round_num + 1) # add one because it was increased in the database
@@ -400,8 +404,7 @@ class BotMM < Game
 				if viewer
 					view_pos = nil
 					$conn.query("UPDATE games SET round_num = #{round_num}, phase_num = #{phase_num}, viewee = #{viewee}, viewer = #{viewer}, view_pos = NULL WHERE gid = #{@gid}")
-					message = status
-					$wi.post(thread, message)
+					update_status
 				else
 					$conn.query("UPDATE games SET round_num = #{round_num}, phase_num = #{phase_num}, viewee = #{viewee}, viewer = NULL, view_pos = NULL WHERE gid = #{@gid}")
 					$wi.post(thread, "[color=#008800]No one is able to view one of #{$pl[viewee].name}'s cards.[/color]")
@@ -414,7 +417,7 @@ class BotMM < Game
 			if (viewer && viewee && view_pos)
 				$conn.query("UPDATE games SET viewer = NULL, view_pos = NULL WHERE gid = #{@gid}")
 			end
-			$wi.post(thread, status)
+			update_status
 		end
 	end
 
@@ -480,7 +483,7 @@ class BotMM < Game
 					if (viewer && viewee)
 						$wi.post(thread, "[color=#008800]#{$pl[phase_num].name} has chosen for #{$pl[viewer].name} to view one of #{$pl[viewee].name}'s cards.[/color]")
 						$conn.query("UPDATE games SET viewer = #{viewer}, viewee = #{viewee} WHERE gid = #{@gid}")
-						$wi.post(thread, status)
+						update_status
 					else
 						$wi.post(thread, "[q=\"#{action[0]}\"]#{action[2]}[/q]\n[color=#008800]This choice is invalid.[/color]")
 						next
@@ -583,8 +586,7 @@ class BotMM < Game
 	def choose(view_pos)
 		$conn.query("UPDATE games SET view_pos = #{view_pos} WHERE gid = #{@gid}")
 		send_view
-		message = status
-		$wi.post(thread, message)
+		update_status
 	end
 
 	def vote(p1, protect)
@@ -622,8 +624,18 @@ class BotMM < Game
 			$conn.query("UPDATE player_cards SET card = #{Constants::PUNCHED} WHERE gid = #{@gid} AND pid = #{viewee}")
 		end
 		text << "[/b][/color]"
+		@conn.query("INSERT INTO game_histories (gid, message) VALUES (#{@gid}, #{escape(text)}")
 		$wi.post(thread, text)
 		$conn.query("UPDATE games SET viewee = NULL WHERE gid = #{@gid}")
+		if @history_id
+			text = ""
+			res = $conn.query("SELECT message FROM game_messages WHERE gid = #{@gid} ORDER BY id")
+			for row in res
+				text << "\n\n" unless text == ""
+				text << row[0]
+			end
+			$wi.edit_article(@history_id, "Voting History", text)
+		end
 		next_step
 	end
 

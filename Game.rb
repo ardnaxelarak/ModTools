@@ -4,13 +4,13 @@ require_relative 'Setup'
 require_relative 'Room'
 
 class Game
-	attr_accessor :gid, :name, :thread, :index
+	attr_accessor :gid, :name, :thread, :index, :history_id, :status_id
 
 	def initialize(gid)
 		@gid = gid
-		res = $conn.query("SELECT name, game_index, thread_id FROM games WHERE gid = #{@gid}")
+		res = $conn.query("SELECT name, game_index, thread_id, history_id, status_id FROM games WHERE gid = #{@gid}")
 		return unless row = res.fetch_row
-		(@name, @index, @thread) = row
+		(@name, @index, @thread, @history_id, @status_id) = row
 	end
 
 	def all_players
