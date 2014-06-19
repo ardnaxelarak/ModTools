@@ -54,8 +54,9 @@ class BotMM < Game
 		modmessage << "[/c]"
 		$conn.query("INSERT INTO player_messages (pid, gid, message) VALUES #{mod_list.collect{|pid| "(#{pid}, #{@gid}, #{escape(modmessage)})"}.join(", ")}")
 		$conn.query("UPDATE games SET status = #{Constants::ACTIVE} WHERE gid = #{@gid}")
-		$wi.post(thread, "[color=purple][b]Roles have been sent out. Please await further instruction.[/b][/color]")
+		# $wi.post(thread, "[color=purple][b]Roles have been sent out. Please await further instruction.[/b][/color]")
 		puts "Started game #{@gid}"
+		next_step
 	end
 
 	def can_view(viewer, viewee)
