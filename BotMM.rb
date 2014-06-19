@@ -339,7 +339,7 @@ class BotMM < Game
 			elsif (viewee)
 				message << "\n\n#{$pl[phase_num].name} is deciding who should be given cockpit access. Please post [b]choose [i]&lt;player&gt;[/i][/b] in the thread."
 			else
-				message << "\n\n#{$pl[phase_num].name} is choosing a player to view another player's card. Please post [b][i]&lt;player&gt;[/i] checks [i]&lt;player&gt;[/i][/b] in the thread. You may not choose the Captain or a player with cockpit access."
+				message << "\n\n#{$pl[phase_num].name} is choosing a player to view another player's card. Please post [b][i]&lt;player&gt;[/i] checks [i]&lt;player&gt;[/i][/b] in the thread. You may not choose the Captain or a player with cockpit access.\n(You may instead post [b]choose [i]&lt;player&gt;[/i][/b] to skip the check and choose a player to give cockpit access immediately.)"
 			end
 		end
 		return message
@@ -489,7 +489,7 @@ class BotMM < Game
 						$wi.post(thread, "[q=\"#{action[0]}\"]#{action[2]}[/q]\n[color=#008800]This choice is invalid.[/color]")
 						next
 					end
-				elsif (action[1] == :choose && viewee)
+				elsif (action[1] == :choose)
 					vl = valid_lookers
 					choice = $pl.get_player(action[3], vl, verbose)
 					if (choice)
@@ -531,10 +531,10 @@ class BotMM < Game
 				next unless actor = $pl.get_player(item[:from], turn_order, verbose)
 				if (match[1].downcase == "punch")
 					vote(actor, false)
-					puts "#{$pl[actor].name} punches #{$pl[viewee].name}"
+					puts "#{$pl[actor].name} punches #{$pl[viewee].name}" if verbose
 				else
 					vote(actor, true)
-					puts "#{$pl[actor].name} protects #{$pl[viewee].name}"
+					puts "#{$pl[actor].name} protects #{$pl[viewee].name}" if verbose
 				end
 				ret = true
 			end

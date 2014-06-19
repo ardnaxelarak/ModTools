@@ -120,12 +120,12 @@ def scan_signups(gid, verbose = false, only_new = true)
 			if (plist.include?(action[0].downcase))
 				remove -= [action[0]]
 			else
-				add.push(action[0])
+				add.push(action[0]) unless add.include?(action[0])
 			end
 		when :remove
 			puts "#{action[0]} has removed from #{g.name}" if verbose
 			if (plist.include?(action[0].downcase))
-				remove.push(action[0])
+				remove.push(action[0]) unless remove.include?(action[0])
 			else
 				add -= [action[0]]
 			end
