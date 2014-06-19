@@ -23,7 +23,7 @@ def check_active
 		when 5
 			if (auto)
 				b = BotMM.new(row[0].to_i)
-				b.scan(true)
+				b.scan(false)
 			end
 		end
 	end
