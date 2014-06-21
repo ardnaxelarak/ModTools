@@ -14,7 +14,7 @@ if (isset($_POST['username'], $_POST['password']))
 	{
 		case 1:
 			// login succeeded
-			header('Location: ../index.php');
+			header('Location: ../');
 			break;
 		case 2:
 			// login used temp password

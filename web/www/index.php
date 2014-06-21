@@ -74,6 +74,7 @@ sec_session_start();
 		$stmt->close(); ?>
 			</table></td>
 			</tr></table>
+			<a href='<?php echo ROOT ?>/new'>Add new game</a>
 		</center>
 	</body>
 </html>
