@@ -625,12 +625,12 @@ class BotMM < Game
 			$conn.query("UPDATE player_cards SET card = #{Constants::PUNCHED} WHERE gid = #{@gid} AND pid = #{viewee}")
 		end
 		text << "[/b][/color]"
-		@conn.query("INSERT INTO game_histories (gid, message) VALUES (#{@gid}, #{escape(text)}")
+		$conn.query("INSERT INTO game_history (gid, message) VALUES (#{@gid}, #{escape(text)})")
 		$wi.post(thread, text)
 		$conn.query("UPDATE games SET viewee = NULL WHERE gid = #{@gid}")
 		if @history_id
 			text = ""
-			res = $conn.query("SELECT message FROM game_messages WHERE gid = #{@gid} ORDER BY id")
+			res = $conn.query("SELECT message FROM game_history WHERE gid = #{@gid} ORDER BY id")
 			for row in res
 				text << "\n\n" unless text == ""
 				text << row[0]

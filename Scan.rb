@@ -150,7 +150,7 @@ def scan_signups(gid, verbose = false, only_new = true)
 	add.collect!{|pname| $pl.get_id(pname, true)}
 	remove.collect!{|pname| $pl.get_id(pname)}
 
-	$conn.query("DELETE FROM game_players WHERE gid = #{gid} AND pid IN (#{remove.join(", ")}") if remove.length > 0
+	$conn.query("DELETE FROM game_players WHERE gid = #{gid} AND pid IN (#{remove.join(", ")})") if remove.length > 0
 	
 	$conn.query("INSERT INTO game_players (gid, pid) VALUES #{add.collect{|pid| "(#{gid}, #{pid})"}.join(", ")}") if add.length > 0
 	if (add.length > 0 || remove.length > 0)
