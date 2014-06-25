@@ -167,14 +167,14 @@ class BotMM < Game
 			$conn.query("UPDATE player_cards SET card = #{Constants::PUNCHED} WHERE gid = #{@gid} AND card = #{current}")
 			$conn.query("UPDATE games SET round_num = round_num + 1 WHERE gid = #{@gid}")
 			message = "#{name_list(cur_left)} automatically become#{cur_left.length > 1 ? "" : "s"} Punched."
-			$wi.post(thread, "[color=#008800]#{message}[/color]")
+			add_to_history("[color=#008800]#{message}[/color]")
 			return nil
 		end
 		if (total - new_taken.length == cur_left.length)
 			$conn.query("UPDATE player_cards SET card = #{new} WHERE gid = #{@gid} AND card = #{current}")
 			$conn.query("UPDATE games SET round_num = round_num + 1 WHERE gid = #{@gid}")
 			message = "#{name_list(cur_left)} automatically receive#{cur_left.length > 1 ? "" : "s"} a #{card_name} card."
-			$wi.post(thread, "[color=#008800]#{message}[/color]")
+			add_to_history("[color=#008800]#{message}[/color]")
 			return nil
 		end
 		newpos = (pos + 1) % num
@@ -319,7 +319,7 @@ class BotMM < Game
 			message << texts[i]
 			message << "[/floatleft]"
 		end
-		message << "[c]#{" " * (20 * ((num + 1) / 2))}[/c]"
+		message << "[c]#{" " * (22 * ((num + 1) / 2))}[/c]"
 		message << "[/size][clear]"
 		if (round_num >= 2 && round_num <= 4)
 			if (viewee && viewer && view_pos)
@@ -601,7 +601,7 @@ class BotMM < Game
 		return unless row = res.fetch_row
 		row.collect!{|piece| piece == nil ? nil : piece.to_i}
 		(round_num, phase_num, viewee) = row
-		res = $conn.query("SELECT pid, vote FROM binary_votes WHERE gid = #{@gid} AND round_num = #{round_num} AND phase_num = #{phase_num}")
+		res = $conn.query("SELECT v.pid, vote FROM binary_votes v JOIN turn_order t ON v.gid = t.gid AND v.pid = t.pid WHERE gid = #{@gid} AND round_num = #{round_num} AND phase_num = #{phase_num} ORDER BY t.id")
 		return if res.num_rows < num
 		text = "[b]Phase #{round_num - 1} - #{$pl[viewee].name}[/b]\n"
 		count = 0
@@ -625,18 +625,8 @@ class BotMM < Game
 			$conn.query("UPDATE player_cards SET card = #{Constants::PUNCHED} WHERE gid = #{@gid} AND pid = #{viewee}")
 		end
 		text << "[/b][/color]"
-		$conn.query("INSERT INTO game_history (gid, message) VALUES (#{@gid}, #{escape(text)})")
-		$wi.post(thread, text)
+		add_to_history(text)
 		$conn.query("UPDATE games SET viewee = NULL WHERE gid = #{@gid}")
-		if @history_id
-			text = ""
-			res = $conn.query("SELECT message FROM game_history WHERE gid = #{@gid} ORDER BY id")
-			for row in res
-				text << "\n\n" unless text == ""
-				text << row[0]
-			end
-			$wi.edit_article(@history_id, "Voting History", text)
-		end
 		next_step
 	end
 

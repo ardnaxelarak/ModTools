@@ -53,7 +53,7 @@ class Bot2r1b < Game
 
 	def create_room(name, thread, players, leader = nil)
 		rn = round_num
-		$conn.query("INSERT INTO rooms (gid, thread_id, round_num, name, leader) VALUES (#{@gid}, '#{thread}', #{round_num}, '#{escape_quotes(name)}', #{leader ? leader : "NULL"})")
+		$conn.query("INSERT INTO rooms (gid, thread_id, round_num, name, leader) VALUES (#{@gid}, '#{thread}', #{round_num}, #{escape(name)}, #{leader ? leader : "NULL"})")
 		rid = $conn.insert_id
 		plist = players.collect{|pid| "(#{rid}, #{pid})"}.join(", ")
 		$conn.query("INSERT INTO room_players (rid, pid) VALUES #{plist}")

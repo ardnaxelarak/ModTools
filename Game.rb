@@ -85,7 +85,17 @@ class Game
 		end
 	end
 
-	def escape_quotes(text)
-		return text.gsub("'", "\\'")
+	def add_to_history(content, post = true)
+		$conn.query("INSERT INTO game_history (gid, message) VALUES (#{@gid}, #{escape(content)})")
+		$wi.post(thread, text) if post
+		if @history_id
+			text = ""
+			res = $conn.query("SELECT message FROM game_history WHERE gid = #{@gid} ORDER BY id")
+			for row in res
+				text << "\n\n" unless text == ""
+				text << row[0]
+			end
+			$wi.edit_article(@history_id, "Voting History", text)
+		end
 	end
 end
