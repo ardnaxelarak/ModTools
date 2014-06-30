@@ -61,7 +61,7 @@ class Game
 	def name_list(pids, verb = false)
 		return "" if pids.length == 0
 		return "#{$pl[pids[0]].name}#{verb ? " is" : ""}" if pids.length == 1
-		return "#{pids.collect{|pid| $pl[pid].name}.join{" and "}}#{verb ? " are" : ""}" if pids.length == 2
+		return "#{pids.collect{|pid| $pl[pid].name}.join(" and ")}#{verb ? " are" : ""}" if pids.length == 2
 		return "#{pids[0...-1].collect{|pid| $pl[pid].name}.join(", ")}, and #{$pl[pids[-1]].name}#{verb ? " are" : ""}"
 	end
 
@@ -87,7 +87,7 @@ class Game
 
 	def add_to_history(content, post = true)
 		$conn.query("INSERT INTO game_history (gid, message) VALUES (#{@gid}, #{escape(content)})")
-		$wi.post(thread, text) if post
+		$wi.post(thread, content) if post
 		if @history_id
 			text = ""
 			res = $conn.query("SELECT message FROM game_history WHERE gid = #{@gid} ORDER BY id")

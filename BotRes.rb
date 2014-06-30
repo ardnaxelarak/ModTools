@@ -3,14 +3,9 @@
 require_relative 'Game'
 require_relative 'Scan'
 
-class BotMM < Game
+class BotRes < Game
 	attr_accessor :roundnum, :index
 	attr_accessor :gid, :name, :thread, :hidden
-
-	POS_NAMES = ["", "right", "middle", "left"]
-	COLOR_LIST = ["red", "green", "blue", "orange", "brown", "purple", "black"]
-
-	ACTION_HASH = {:left => "left", :right => "right", :middle => "middle|center", :honest => "honest", :infiltrator => "infiltrator", :status => "status", :check => "%p checks? %p", :choose => "choose %p"}
 
 	def initialize(gid)
 		super(gid)
@@ -23,176 +18,73 @@ class BotMM < Game
 			list.push(row[0].to_i)
 		end
 		list.shuffle!
-		$conn.query("INSERT INTO turn_order (gid, pid) VALUES #{list.collect{|pid| "(#{@gid}, #{pid})"}.join(", ")}")
-		$conn.query("INSERT INTO player_cards (gid, pid, card) VALUES #{list.collect{|pid| "(#{@gid}, #{pid}, #{Constants::CREWMEMBER})"}.join(", ")}")
-		num = list.length
-		bad = (num - 1) / 2
-		good = num - bad
-		roles = [Constants::HONEST] * good + [Constants::INFILTRATOR] * bad
-		roles.shuffle!
-		nums = (0...num).collect{|i| i}
-		$conn.query("INSERT INTO player_roles (gid, pid, role) VALUES #{nums.collect{|ind| "(#{@gid}, #{list[ind]}, #{roles[ind]})"}.join(", ")}")
-		badmessage = "[b]You are an Infiltrator.[/b]\nThe infilitrators are #{name_list(nums.select{|ind| roles[ind] == Constants::INFILTRATOR}.collect{|ind| list[ind]})}."
-		goodmessage = "[b]You are Honest.[/b]"
-		$conn.query("INSERT INTO player_messages (pid, gid, message) VALUES #{nums.collect{|ind| "(#{list[ind]}, #{@gid}, #{escape(roles[ind] == Constants::HONEST ? goodmessage : badmessage)})"}.join(", ")}")
-
-		cards = []
-		for i in nums
-			cards[i] = [Constants::HONEST, Constants::INFILTRATOR, roles[i]]
-			cards[i].shuffle!
-			$conn.query("INSERT INTO role_cards (gid, pid, position, role) VALUES #{(0...3).collect{|j| "(#{@gid}, #{list[i]}, #{j + 1}, #{cards[i][j]})"}.join(", ")}")
+		res = $conn.query("SELECT g.role, r.team, r.name FROM game_roles g JOIN roles r ON g.role = r.id WHERE g.gid = #{@gid}")
+		roles = []
+		for row in res
+			roles.push([row[0].to_i, row[1].to_i], row[2])
 		end
+		roles.shuffle!
+		unless list.length == roles.length
+			puts "Game #{gid}: Number of players and number of roles do not agree"
+			return
+		end
+		$conn.query("INSERT INTO turn_order (gid, pid) VALUES #{list.collect{|pid| "(#{@gid}, #{pid})"}.join(", ")}")
+		num = list.length
+		nums = (0...num).collect{|i| i}
+		role_hash = {}
+		for i in nums
+			role_hash[list[i]] = roles[i]
+		end
+		$conn.query("INSERT INTO player_roles (gid, pid, role) VALUES #{role_hash.collect{|pid, roleinfo| "(#{@gid}, #{pid}, #{roleinfo[0]})"}.join(", ")}")
+		role_messages = {}
+		merlin_sees = list.select{|pid| role_hash[pid][1] == Constants::SPY_TEAM && role_hash[pid][0] != Constants::MORDRED}.sort_by{|pid| $pl[pid].name.upcase}
+		spies_see = list.select{|pid| role_hash[pid][1] == Constants::SPY_TEAM && role_hash[pid][0] != Constants::OBERON}.sort_by{|pid| $pl[pid].name.upcase}
+		for role_hash.each do |pid, roleinfo|
+			case rid
+			when Constants::MERLIN
+				role_messages[pid] = "You are [b]Merlin[/b].\nThe spies are #{name_list(merlin_sees, false)}."
+			when Constants::PERCY
+				merlins = list.select{|pid| role_hash[pid][0] == Constants::MERLIN}
+				morganas = list.select{|pid| role_hash[pid][0] == Constants::MORGANA}
+				if (merlins.length == 0 && morganas.length == 0)
+					role_messages[pid] = "You are [b]Percival[/b].\nNo one is Merlin or Morgana."
+				elsif (merlins.length == 0)
+					role_messages[pid] = "You are [b]Percival[/b].\n#{name_list(morganas.sort_by{|pid| $pl[pid].name.upcase}, true)} Morgana."
+				elsif (morganas.length == 0)
+					role_messages[pid] = "You are [b]Percival[/b].\n#{name_list(merlins.sort_by{|pid| $pl[pid].name.upcase}, true)} Merlin."
+				else
+					role_messages[pid] = "You are [b]Percival[/b].\n#{name_list((merlins + morganas).sort_by{|pid| $pl[pid].name.upcase}, true)} Merlin."
+				end
+			when Constants::REBEL
+				role_messages[pid] = "You are a [b]Rebel[/b]."
+			when Constants::MORGANA
+				role_messages[pid] = "You are [b]Morgana[/b].\nThe other spies are #{name_list(spies_see, false)}."
+			when Constants::MORDRED
+				role_messages[pid] = "You are [b]Mordred[/b].\nThe other spies are #{name_list(spies_see, false)}."
+			when Constants::ASSASSIN
+				role_messages[pid] = "You are the [b]Assassin[/b].\nThe other spies are #{name_list(spies_see, false)}."
+			when Constants::OBERON
+				role_messages[pid] = "You are [b]Oberon[/b]."
+			when Constants::SPY
+				role_messages[pid] = "You are a [b]Spy[/b].\nThe other spies are #{name_list(spies_see, false)}."
+			end
+		end
+		$conn.query("INSERT INTO player_messages (pid, gid, message) VALUES #{list.collect{|pid| "(#{pid}, #{@gid}, #{escape(role_messages[pid])})"}.join(", ")}")
+
 		modmessage = "Turn order:\n"
 		for pid in list
-			modmessage << "#{$pl[pid].name}\n"
+			modmessage << "#{$pl[pid].name} - #{role_hash[pid][2]}\n"
 		end
-		modmessage << "\n\nInfiltrators are #{name_list(nums.select{|ind| roles[ind] == Constants::INFILTRATOR}.collect{|ind| list[ind]})}."
-		modmessage << "\n\n[c]R M L Cards"
-		for i in nums
-			modmessage << "\n#{cards[i].collect{|rid| rid == Constants::HONEST ? "H" : "I"}.join(" ")} #{$pl[list[i]].name}"
-		end
-		modmessage << "[/c]"
 		$conn.query("INSERT INTO player_messages (pid, gid, message) VALUES #{mod_list.collect{|pid| "(#{pid}, #{@gid}, #{escape(modmessage)})"}.join(", ")}")
+		post = "[b][color=purple]Turn order:[/color][/b]\n"
+		post << "[color=#008800]"
+		post << list.collect{|pid| $pl[pid].name}.join("\n")
+		post << "[/color]"
 		$conn.query("UPDATE games SET status = #{Constants::ACTIVE} WHERE gid = #{@gid}")
+		$wi.post(thread, post)
 		# $wi.post(thread, "[color=purple][b]Roles have been sent out. Please await further instruction.[/b][/color]")
 		puts "Started game #{@gid}"
 		next_step
-	end
-
-	def can_view(viewer, viewee)
-		res = $conn.query("SELECT pid FROM role_views WHERE gid = #{@gid} AND viewer = #{viewer}")
-		return false if res.num_rows >= 4
-		for row in res
-			return false if row[0].to_i == viewee
-		end
-		return true
-	end
-
-	def num_markers
-		res = $conn.query("SELECT viewer, count(*) FROM role_views WHERE gid = #{@gid} GROUP BY viewer")
-		hash = {}
-		for row in res
-			val = row[1]
-			if val
-				val = val.to_i
-			else
-				val = 0
-			end
-			hash[row[0].to_i] = 4 - val
-		end
-		return hash
-	end
-
-	def get_viewer(position, phase)
-		plist = turn_order
-		num = plist.length
-		pos = position + num / 2
-		case phase
-		when 2
-			pos += 1
-		when 3
-			pos -= 1 if num > 5
-		end
-		pos = pos % num
-		return plist[pos] if can_view(plist[pos], plist[position])
-		pos -= 1
-		return plist[pos] if can_view(plist[pos], plist[position])
-		pos = (pos + 2) % num
-		return plist[pos] if can_view(plist[pos], plist[position])
-		return nil
-	end
-
-	def knowledge_markers(pid, position, colorhash)
-		res = $conn.query("SELECT v.viewer, v.role, r.name FROM role_views v LEFT JOIN roles r ON v.role = r.id WHERE v.gid = #{@gid} AND v.pid = #{pid} AND v.position = #{position} ORDER BY v.id")
-		num = 5 - res.num_rows
-		pieces = []
-		for row in res
-			pl = row[0].to_i
-			col = colorhash[pl]
-			let = row[2][0]
-			pieces.push("[bgcolor=#{col}]#{let}[/bgcolor]")
-		end
-		pieces.push("[bgcolor=white]#{" " * num}[/bgcolor]") if num > 0
-		return pieces
-	end
-
-	def num_remaining(phase)
-		case phase
-		when 1
-			card = Constants::BENEFIT
-			total = (turn_order.length + 1) / 2
-		when 2
-			card = Constants::RELIABLE
-			total = 2
-		when 3
-			card = Constants::CAPTAIN
-			total = 1
-		end
-		row = $conn.query("SELECT count(*) FROM player_cards WHERE gid = #{@gid} AND card = #{card}").fetch_row
-		return total - row[0].to_i
-	end
-
-	def get_next_pos(plist, pos, phase)
-		num = plist.length
-		case phase
-		when 1
-			current = Constants::CREWMEMBER
-			new = Constants::BENEFIT
-			total = (num + 1) / 2
-			card_name = "Benefit of the Doubt"
-		when 2
-			current = Constants::BENEFIT
-			new = Constants::RELIABLE
-			total = 2
-			card_name = "Reliable"
-		when 3
-			current = Constants::RELIABLE
-			new = Constants::CAPTAIN
-			total = 1
-			card_name = "Captain"
-		end
-		res = $conn.query("SELECT pid, card FROM player_cards WHERE gid = #{@gid}")
-		card_hash = {}
-		cur_left = []
-		new_taken = []
-		for row in res
-			card_hash[row[0].to_i] = row[1].to_i
-			if (row[1].to_i == current )
-				cur_left.push(row[0].to_i)
-			elsif (row[1].to_i == new)
-				new_taken.push(row[0].to_i)
-			end
-		end
-		if (total - new_taken.length == 0)
-			$conn.query("UPDATE player_cards SET card = #{Constants::PUNCHED} WHERE gid = #{@gid} AND card = #{current}")
-			$conn.query("UPDATE games SET round_num = round_num + 1 WHERE gid = #{@gid}")
-			message = "#{name_list(cur_left)} automatically become#{cur_left.length > 1 ? "" : "s"} Punched."
-			add_to_history("[color=#008800]#{message}[/color]")
-			return nil
-		end
-		if (total - new_taken.length == cur_left.length)
-			$conn.query("UPDATE player_cards SET card = #{new} WHERE gid = #{@gid} AND card = #{current}")
-			$conn.query("UPDATE games SET round_num = round_num + 1 WHERE gid = #{@gid}")
-			message = "#{name_list(cur_left)} automatically receive#{cur_left.length > 1 ? "" : "s"} a #{card_name} card."
-			add_to_history("[color=#008800]#{message}[/color]")
-			return nil
-		end
-		newpos = (pos + 1) % num
-		while (card_hash[plist[newpos]] != current && newpos != pos)
-			newpos = (newpos + 1) % num
-		end
-		return newpos if (newpos != pos || card_hash[plist[newpos]] == new)
-		$wi.post(thread, "[color=#008800]Something weird happened.[/color]")
-		return -1
-	end
-
-	def valid_lookers
-		res = $conn.query("SELECT pid FROM player_cards WHERE gid = #{@gid} AND card NOT IN (#{Constants::CAPTAIN}, #{Constants::COCKPIT})")
-		ret = []
-		for row in res
-			ret.push(row[0].to_i) if row[0]
-		end
-		return ret
 	end
 
 	def update_status(prefix = nil)
@@ -345,22 +237,15 @@ class BotMM < Game
 		return message
 	end
 
-	def send_view
-		res = $conn.query("SELECT g.viewer, g.viewee, g.view_pos, r1.name, pr.role FROM games g LEFT JOIN player_roles pr ON pr.gid = g.gid AND pr.pid = g.viewer LEFT JOIN role_cards c ON c.gid = g.gid AND c.pid = g.viewee AND c.position = g.view_pos LEFT JOIN roles r1 ON c.role = r1.id WHERE g.gid = #{@gid}")
+	def send_lady
+		res = $conn.query("SELECT pr.role, t.name, g.viewer, g.viewee FROM player_roles pr JOIN games g ON pr.gid = g.gid JOIN roles r ON pr.role = r.id JOIN teams t ON r.appear = t.id WHERE g.gid = #{@gid} AND pr.pid = g.viewee")
 		return unless row = res.fetch_row
-		(viewer, viewee, view_pos, view, viewerloyalty) = row
+		(role, team, viewer, viewee) = row
+		role = role.to_i if role
 		viewer = viewer.to_i if viewer
 		viewee = viewee.to_i if viewee
-		view_pos = view_pos.to_i if view_pos
-		viewerloyalty = viewerloyalty.to_i if viewerloyalty
 
-		message = "#{$pl[viewee].name}'s #{POS_NAMES[view_pos]} card says [b]#{view}[/b].\n"
-		if (viewerloyalty == Constants::HONEST)
-			message << "Since you are Honest, you must tell the truth.\nPlease post [b]#{view}[/b] in the thread."
-		else
-			message << "Please post either [b]Honest[/b] or [b]Infiltrator[/b] in the thread according to the claim you wish to make."
-		end
-		message << "\n[url]http://boardgamegeek.com/thread/#{thread}/new[/url]"
+		message = "#{$pl[viewee].name} is a [b]#{team}[/b]."
 		$conn.query("INSERT INTO player_messages (pid, gid, message) VALUES (#{viewer}, #{@gid}, #{escape(message)})")
 	end
 
@@ -423,11 +308,11 @@ class BotMM < Game
 	end
 
 	def scan(verbose = false, only_new = true)
-		scan_MM(verbose, only_new)
-		check_votes if check_MM_mail(verbose)
+		scan_Res(verbose, only_new)
+		check_votes if check_Res_mail(verbose)
 	end
 
-	def scan_MM(verbose = false, only_new = true)
+	def scan_Res(verbose = false, only_new = true)
 		last = nil
 		res = $conn.query("SELECT last_scanned, phase_num, viewer, viewee, view_pos FROM games WHERE gid = #{@gid}")
 		return unless row = res.fetch_row
@@ -482,22 +367,11 @@ class BotMM < Game
 					viewer = $pl.get_player(action[3], vl, verbose)
 					viewee = $pl.get_player(action[4], vl, verbose)
 					if (viewer && viewee)
-						res = $conn.query("SELECT pid FROM role_views WHERE viewer = #{viewer} AND gid = #{@gid}")
-						if res.num_rows >= 4
-							$wi.post(thread, "[q=\"#{action[0]}\"][b]#{action[2]}[/b][/q][color=#008800]#{$pl[viewer].name} has no remaining knowledge markers.[/color]")
-							next
-						end
-						for row in res
-							if row[0] && row[0].to_i == viewee
-								$wi.post(thread, "[q=\"#{action[0]}\"][b]#{action[2]}[/b][/q][color=#008800]#{$pl[viewer].name} has already viewed one of #{$pl[viewee].name}'s cards.[/color]")
-								next
-							end
-						end
 						$wi.post(thread, "[color=#008800]#{$pl[phase_num].name} has chosen for #{$pl[viewer].name} to view one of #{$pl[viewee].name}'s cards.[/color]")
 						$conn.query("UPDATE games SET viewer = #{viewer}, viewee = #{viewee} WHERE gid = #{@gid}")
 						update_status
 					else
-						$wi.post(thread, "[q=\"#{action[0]}\"][b]#{action[2]}[/b][/q][color=#008800]This choice is invalid.[/color]")
+						$wi.post(thread, "[q=\"#{action[0]}\"]#{action[2]}[/q]\n[color=#008800]This choice is invalid.[/color]")
 						next
 					end
 				elsif (action[1] == :choose)
@@ -524,7 +398,7 @@ class BotMM < Game
 		end
 	end
 
-	def check_MM_mail(verbose = false)
+	def check_Res_mail(verbose = false)
 		res = $conn.query("SELECT viewee FROM games WHERE gid = #{@gid}")
 		return false unless row = res.fetch_row
 		return false unless row[0]
@@ -556,12 +430,12 @@ class BotMM < Game
 	def check_end(round_num)
 		case round_num
 		when 4
-			ren = $conn.query("SELECT c.pid FROM player_cards c LEFT JOIN player_roles r ON c.pid = r.pid AND c.gid = r.gid WHERE c.card = #{Constants::RELIABLE} AND r.role = #{Constants::HONEST} AND c.gid = #{@gid}")
+			ren = $conn.query("SELECT c.pid FROM player_cards c LEFT JOIN player_roles r ON c.pid = r.pid WHERE c.card = #{Constants::RELIABLE} AND r.role = #{Constants::HONEST}")
 			return false if ren.num_rows > 0
 			end_game(false, "All Reliable players are infiltrators.")
 			return true
 		when 5
-			ren = $conn.query("SELECT c.pid, r.role FROM player_cards c LEFT JOIN player_roles r ON c.pid = r.pid AND c.gid = r.gid WHERE c.card = #{Constants::CAPTAIN} AND c.gid = #{@gid}")
+			ren = $conn.query("SELECT c.pid, r.role FROM player_cards c LEFT JOIN player_roles r ON c.pid = r.pid WHERE c.card = #{Constants::CAPTAIN}")
 			return false unless row = ren.fetch_row
 			(pid, role) = row
 			pid = pid.to_i if pid
@@ -612,7 +486,7 @@ class BotMM < Game
 		return unless row = res.fetch_row
 		row.collect!{|piece| piece == nil ? nil : piece.to_i}
 		(round_num, phase_num, viewee) = row
-		res = $conn.query("SELECT v.pid, vote FROM binary_votes v JOIN turn_order t ON v.gid = t.gid AND v.pid = t.pid WHERE v.gid = #{@gid} AND round_num = #{round_num} AND phase_num = #{phase_num} ORDER BY t.id")
+		res = $conn.query("SELECT v.pid, vote FROM binary_votes v JOIN turn_order t ON v.gid = t.gid AND v.pid = t.pid WHERE gid = #{@gid} AND round_num = #{round_num} AND phase_num = #{phase_num} ORDER BY t.id")
 		return if res.num_rows < num
 		text = "[b]Phase #{round_num - 1} - #{$pl[viewee].name}[/b]\n"
 		count = 0
