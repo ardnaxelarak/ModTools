@@ -31,4 +31,10 @@ module Constants
 	ENDED = 4
 	CLOSED = 5
 	CANCELLED = 6
+
+	# Game Types
+	TYPE_2R1B = 1
+	TYPE_ONUW = 2
+	TYPE_MM = 5
+	TYPE_RES = 7
 end

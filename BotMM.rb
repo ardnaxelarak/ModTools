@@ -59,6 +59,36 @@ class BotMM < Game
 		next_step
 	end
 
+	def self.create_auto_game(num, index, name, acronym = nil)
+		rules = "[b][color=purple]Rules:[/color][/b]\n"
+		rules << "[color=#008800]1. We will be using this Skirmish card.[imageid=#{2049110 + (num == 5 ? 4 : num)}]\n"
+		rules << "2. Starting from Phase 0, after a card is checked, modkiwi will send it to a player and wait for his or her response (even if he or she is Honest and has to tell the truth). This is to avoid any timing meta.\n"
+		rules << "3. There will be 24h deadline for every action (excluding weekends). modkiwi will ping you if you have not voted after 12h, in case you have forgotten or did not realize, and again after 24h.\n"
+		rules << "4. No game-related discussion is allowed outside the thread until the game is completed. This includes GMs between players and posts in other threads relating to the game.\n"
+		rules << "5. Editing of posts is discouraged, and is allowed only in the first few minutes to fix typographical or formatting errors. If you edit a post, please include an addendum to indicate the reason for the edit. e.g. Edit: Fixed a typo.\n"
+		rules << "6. No dice have been provided to you. You may not use the Geekroller in this thread.\n"
+		rules << "7. Please subscribe to the thread and check in at least daily (exceptions for weekends).\n"
+		rules << "8. Submission changes rule: You can change a submitted card any number of times (Protect/Punch) but as soon as modkiwi receives the card from the last player, no more changes are allowed. If you made changes after all the cards were in, modkiwi will tell you which submitted card was the final one.\n"
+		rules << "9. Remember everyone is here to have fun! Bullying, cursing, and other poor conduct is frowned upon.\n"
+		rules << "10. No out-of-game consequences for any in-game actions (e.g., saying \"I will give you 10 GG if I'm a spy\").\n"
+		rules << "11. This game will probably take about two weeks. If you will be unavailable during a certain non-weekend portion of that time, please indicate as such when you sign up.\n"
+		rules << "12. Since there is no human moderator, please try to handle any disputes among yourselves and follow the rules.[/color]\n\n"
+		rules << "[b]Role messages[/b]\n"
+		rules << "[q=\"Role sent to Honest\"][b]You are Honest.[/b][/q]\n"
+		rules << "[q=\"Role sent to Infiltrator\"][b]You are an Infiltrator.[/b]\nThe infiltrators are #{num > 6 ? (num > 8 ? "modkiwi, modkiwi, modkiwi, and modkiwi" : "modkiwi, modkiwi, and modkiwi") : "modkiwi and modkiwi"}.[/q]\n\n"
+		rules << "[color=#008800]Each player has three crew cards in front of him (or her), in a random order.\n"
+		rules << "Honest crew members have two honest cards and one infiltrator card; infilitrators have two infiltrator cards and one honest card.\n"
+		rules << "Each player (in turn order) will check the left card of the crew member before him (or her), and then the right card of the crew member after him (or her).\n"
+		rules << "Honest crew members must tell the truth, infiltrators may lie.[/color]"
+		return nil unless thread = $wi.post_thread(142924, 194, "MM PBF ##{index} - #{name}", rules)
+		signup_id = $wi.post(thread, "[color=#008800]signup list[/color]")
+		status_id = $wi.post(thread, "[color=#008800]current status[/color]")
+		history_id = $wi.post(thread, "[color=#008800]You may post.[/color]")
+		$conn.query("INSERT INTO games (tid, status, thread_id, game_index, name, max_players, signup_id, history_id, status_id, signup_modified, auto, acronym) VALUES (#{Constants::TYPE_MM}, 2, #{escape(thread)}, #{escape(index)}, #{escape(name)}, #{num}, #{escape(signup_id)}, #{escape(history_id)}, #{escape(status_id)}, TRUE, TRUE, #{acronym ? escape(acronym) : "NULL"})")
+		$wi.post(1183016, "[color=#008800]New #{num} player game created.[/color]\n\n[thread=#{thread}][/thread]")
+		return $conn.insert_id
+	end
+
 	def can_view(viewer, viewee)
 		res = $conn.query("SELECT pid FROM role_views WHERE gid = #{@gid} AND viewer = #{viewer}")
 		return false if res.num_rows >= 4

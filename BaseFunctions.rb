@@ -52,5 +52,6 @@ def gen_password
 end
 
 def escape(string)
-	return "'#{string.gsub("'", "\\\\'")}'"
+	return "NULL" unless string
+	return "'#{string.to_s.gsub("'", "\\\\'")}'"
 end
